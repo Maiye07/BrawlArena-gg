@@ -11,6 +11,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const showAuthButton = document.getElementById('show-auth-button');
     const messageDisplay = document.getElementById('message');
 
+    // ===================================================================
+    // FONCTION MANQUANTE À AJOUTER ICI
+    // ===================================================================
+    function showMessage(msg, type) {
+        messageDisplay.textContent = msg;
+        messageDisplay.className = type; // Applique la classe 'success' ou 'error'
+    }
+    // ===================================================================
+
     // Handle click on "Log In / Sign Up" button in the navbar
     showAuthButton.addEventListener('click', (e) => {
         e.preventDefault();
@@ -57,12 +66,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let users = JSON.parse(localStorage.getItem('users')) || [];
         if (users.find(user => user.username === username)) {
-            showMessage('Ce nom d\'utilisateur existe déjà !', 'error');
+            showMessage("Ce nom d'utilisateur existe déjà !", 'error');
             return;
         }
 
         try {
-            // MODIFICATION ICI
             const response = await fetch('https://brawlarena-gg.onrender.com/verify-player', {
                 method: 'POST',
                 headers: {
@@ -98,8 +106,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 2000);
 
         } catch (error) {
-            console.error('Erreur lors de l\'inscription:', error);
-            showMessage('Impossible de contacter le serveur de vérification.', 'error');
+            console.error("Erreur lors de l'inscription:", error);
+            if (error instanceof TypeError) {
+                 showMessage('Erreur de communication. Vérifiez la console (F12) (problème de "Mixed Content" ?)', 'error');
+            } else {
+                 showMessage('Une erreur inattendue est survenue.', 'error');
+            }
         }
     });
 
@@ -117,7 +129,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showMessage('Vérification en cours...', 'success');
 
         try {
-            // MODIFICATION ICI
             const response = await fetch('https://brawlarena-gg.onrender.com/login-by-action', {
                 method: 'POST',
                 headers: {
@@ -157,13 +168,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error('Erreur lors de la tentative de connexion par action:', error);
-            showMessage('Impossible de contacter le serveur de vérification.', 'error');
+             if (error instanceof TypeError) {
+                showMessage('Erreur de communication. Vérifiez la console (F12) (problème de "Mixed Content" ?)', 'error');
+            } else {
+                showMessage('Une erreur inattendue est survenue.', 'error');
+            }
         }
     });
-
-    // Helper function to display messages
-    function showMessage(msg, type) {
-        messageDisplay.textContent = msg;
-        messageDisplay.className = type; // 'success' or 'error'
-    }
 });
