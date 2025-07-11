@@ -3,13 +3,13 @@ const fetch = require('node-fetch');
 const cors = require('cors');
 
 const app = express();
-const port = 3000; // Le port sur lequel notre serveur va écouter
+const port = 3000; // Render ignorera ce port et utilisera le sien, c'est normal
 
 // Ta clé d'API secrète de Supercell
-const BRAWL_STARS_API_KEY = 'METS-TA-CLÉ-D-API-ICI'; 
+const BRAWL_STARS_API_KEY = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6IjI4YTMxOGY3LTAwMDAtYTFlYi03ZmExLTJjNzQzM2M2Y2NhNSJ9.eyJpc3MiOiJzdXBlcmNlbGwiLCJhdWQiOiJzdXBlcmNlbGw6Z2FtZWFwaSIsImp0aSI6IjBkMzg4YTliLTYyYzEtNDIzMS1iNTUwLTczY2M3YmEzODQ4MCIsImlhdCI6MTc1MjI0MzAyMywic3ViIjoiZGV2ZWxvcGVyLzNhOTgxOGVkLTEwNGEtM2ViNS04ZWQwLWRmZDEyNmQ3ZjZmOCIsInNjb3BlcyI6WyJicmF3bHN0YXJzIl0sImxpbWl0cyI6W3sidGllciI6ImRldmVsb3Blci9zaWx2ZXIiLCJ0eXBlIjoidGhyb3R0bGluZyJ9LHsiY2lkcnMiOlsiMC4wLjAuMCJdLCJ0eXBlIjoiY2xpZW50In1dfQ.G_UFt-RrdavEImXnlsvWmHAKlRiu5k8RczylBGHVrYVxfbB87yVRwfuG_QiE61wTL-jYYCX3UYhafBGs5mL_8Q'; 
 
 // Middlewares
-app.use(cors()); // Autorise les requêtes cross-origin (depuis ton fichier HTML)
+app.use(cors()); // Autorise les requêtes cross-origin (depuis ton site sur InfinityFree)
 app.use(express.json()); // Permet au serveur de comprendre le JSON
 
 /**
