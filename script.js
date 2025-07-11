@@ -62,7 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const response = await fetch('http://localhost:3000/verify-player', {
+            // MODIFICATION ICI
+            const response = await fetch('https://brawlarena-gg.onrender.com/verify-player', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -98,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error('Erreur lors de l\'inscription:', error);
-            showMessage('Impossible de contacter le serveur de vérification. Est-il bien démarré ?', 'error');
+            showMessage('Impossible de contacter le serveur de vérification.', 'error');
         }
     });
 
@@ -116,7 +117,8 @@ document.addEventListener('DOMContentLoaded', () => {
         showMessage('Vérification en cours...', 'success');
 
         try {
-            const response = await fetch('http://localhost:3000/login-by-action', {
+            // MODIFICATION ICI
+            const response = await fetch('https://brawlarena-gg.onrender.com/login-by-action', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -158,4 +160,10 @@ document.addEventListener('DOMContentLoaded', () => {
             showMessage('Impossible de contacter le serveur de vérification.', 'error');
         }
     });
+
+    // Helper function to display messages
+    function showMessage(msg, type) {
+        messageDisplay.textContent = msg;
+        messageDisplay.className = type; // 'success' or 'error'
+    }
 });
