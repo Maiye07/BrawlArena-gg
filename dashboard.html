@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrawlArena.gg - Tableau de bord</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="navbar">
+        <div class="logo-area">
+            <div class="logo">BrawlArena.gg</div>
+            <div id="utc-clock" class="utc-clock"></div>
+        </div>
+        <div class="user-info">
+            <div class="username-badge-container">
+                <span id="display-username" class="username-text"></span>
+                <span id="navbar-premium-badge"></span>
+            </div>
+            <button id="logout-button" class="logout-button">Déconnexion</button>
+        </div>
+    </header>
+
+    <div class="main-content">
+        <aside class="sidebar">
+            <h2>Menu</h2>
+            <ul>
+                <li><a href="#" id="profile-link">Profil</a></li> 
+                <li><a href="#" id="tournaments-link">Tournois</a></li>
+                <li><a href="#" id="scrims-link">Scrims</a></li>
+                <li><a href="#" id="settings-link">Paramètres</a></li>
+                <li><a href="#" id="about-link">À propos</a></li>
+            </ul>
+
+            <div class="social-links">
+                <a href="https://discord.gg/xqB64Dug5t" target="_blank" class="social-button discord-button">
+                    Rejoindre le Discord
+                </a>
+                <a href="https://www.twitch.tv/osooka" target="_blank" class="social-button twitch-button">
+                    Suivre sur Twitch
+                </a>
+            </div>
+            
+        </aside>
+
+        <main class="content-area">
+            <div id="dashboard-home-section">
+                <h1>Bienvenue, <span id="username-display">Invité</span> !</h1>
+                <p>Ceci est votre tableau de bord. Utilisez le menu à gauche pour naviguer.</p>
+            </div>
+
+            <div id="profile-section" style="display: none;">
+                <h2>Profil de <span id="profile-username"></span></h2>
+                <div class="profile-info">
+                    <p><strong>Pseudo Supercell ID :</strong> <span id="profile-player-id">Non défini</span></p>
+                    <hr>
+                    <h3>Statistiques</h3>
+                    <p><strong>Tournois participés :</strong> <span id="profile-tournaments-attended">0</span></p>
+                    <p><strong>Scrims participés :</strong> <span id="profile-scrims-attended">0</span></p>
+                    <p><strong>Tournois gagnés :</strong> <span id="profile-tournaments-won">0</span></p>
+                    <hr>
+                    <h3>Créations journalières</h3>
+                    <p>Tournois restants : <strong><span id="profile-daily-tournaments">1</span></strong></p>
+                    <p>Scrims restants : <strong><span id="profile-daily-scrims">2</span></strong></p>
+                </div>
+            </div>
+            
+            <div id="settings-section" style="display: none;">
+                <h2>Paramètres du compte</h2>
+                <form id="supercell-id-form">
+                    <label for="player-id-input">Tag joueur ou pseudo en jeu Brawl Stars :</label>
+                    <input type="text" id="player-id-input" placeholder="Entrez votre Tag (ex: #LPUJCQ) ou pseudo">
+                    <button type="submit">Enregistrer</button>
+                </form>
+                <p id="settings-message"></p>
+                <hr>
+                <h3>Statut Premium (Test)</h3>
+                <button id="toggle-premium-button" class="button">Activer/Désactiver Premium</button>
+            </div>
+
+            <div id="scrims-section" style="display: none;">
+                <div class="section-header">
+                    <h2>Scrims en cours</h2>
+                    <div class="sort-controls">
+                        <label for="sort-scrims">Trier par :</label>
+                        <select id="sort-scrims">
+                            <option value="default">Défaut</option>
+                            <option value="time-asc">Heure (plus proche)</option>
+                            <option value="rank-asc">Rang (croissant)</option>
+                            <option value="rank-desc">Rang (décroissant)</option>
+                        </select>
+                    </div>
+                    <button id="show-scrim-modal-button" class="button">Créer un Scrim</button>
+                </div>
+                <div id="scrims-list-container"></div>
+            </div>
+
+        </main>
+    </div>
+
+    <div id="create-scrim-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="modal-close-button">&times;</span>
+            <h2>Créer un nouveau Scrim</h2>
+            <form id="create-scrim-form">
+                <label for="scrim-name">Nom du salon :</label>
+                <input type="text" id="scrim-name" required>
+                <label for="scrim-game-id">ID de la partie (Brawl Stars) :</label>
+                <input type="text" id="scrim-game-id">
+                
+                <label for="scrim-rank">Rang moyen du salon :</label>
+                <select id="scrim-rank" required>
+                    <option value="" disabled selected>Choisir un rang...</option>
+                    <option value="Légendaire I">Légendaire I</option>
+                    <option value="Légendaire II">Légendaire II</option>
+                    <option value="Légendaire III">Légendaire III</option>
+                    <option value="Master I">Master I</option>
+                    <option value="Master II">Master II</option>
+                    <option value="Master III">Master III</option>
+                    <option value="Pro">Pro</option>
+                </select>
+
+                <label for="scrim-date">Date du scrim :</label>
+                <select id="scrim-date" required></select>
+
+                <label for="scrim-start-time">Heure de commencement (UTC) :</label>
+                <input type="time" id="scrim-start-time" required>
+                <button type="submit">Créer le salon</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>
