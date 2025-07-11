@@ -81,7 +81,7 @@ app.post('/login-by-action', async (req, res) => {
             const playerInBattle = battle.players?.find(p => p.tag === playerTag);
             
             const isFriendlyGame = battle.type === 'friendly';
-            const playedShelly = playerInBattle?.brawler.name === 'Shelly';
+            const playedShelly = playerInBattle?.brawler.name === 'SHELLY';
             const isCommunityMap = entry.event.map === null;
 
             return isFriendlyGame && playedShelly && isCommunityMap;
