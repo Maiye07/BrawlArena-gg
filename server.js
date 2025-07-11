@@ -39,7 +39,7 @@ app.post('/verify-player', async (req, res) => {
     }
 });
 
-// Endpoint pour la connexion (corrigé)
+// Endpoint pour la connexion (logique simplifiée)
 app.post('/login-by-action', async (req, res) => {
     const { playerTag } = req.body;
     if (!playerTag) {
@@ -57,16 +57,16 @@ app.post('/login-by-action', async (req, res) => {
         }
         const battleLog = await battleLogResponse.json();
         
+        // ===== LOGIQUE DE VÉRIFICATION SIMPLIFIÉE ICI =====
         const verificationBattle = battleLog.items.find(entry => {
             const battle = entry.battle;
             const playerInBattle = battle.players?.find(p => p.tag === playerTag);
             
             const isFriendlyGame = battle.type === 'friendly';
-            // ===== CORRECTION FINALE ET DÉFINITIVE ICI =====
             const playedShelly = playerInBattle?.brawler?.name === 'SHELLY';
-            const isCommunityMap = entry.event?.map === null;
 
-            return isFriendlyGame && playedShelly && isCommunityMap;
+            // On ne vérifie plus la carte, juste ces deux conditions
+            return isFriendlyGame && playedShelly;
         });
 
         if (verificationBattle) {
@@ -82,7 +82,7 @@ app.post('/login-by-action', async (req, res) => {
                 }
             });
         } else {
-            res.status(403).json({ error: "Action non vérifiée. Veuillez jouer une partie AMICALE avec Shelly sur une carte communautaire et réessayez." });
+            res.status(403).json({ error: "Action non vérifiée. Veuillez jouer une partie AMICALE avec Shelly et réessayez." });
         }
     } catch (error) {
         console.error('Erreur interne lors de la vérification de l\'action:', error);
