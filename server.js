@@ -3,18 +3,15 @@ const fetch = require('node-fetch');
 const cors = require('cors');
 
 const app = express();
-const port = 3000; // Render ignorera ce port et utilisera le sien, c'est normal
+const port = 3000;
 
 // Ta clé d'API secrète de Supercell
-const BRAWL_STARS_API_KEY = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6IjI4YTMxOGY3LTAwMDAtYTFlYi03ZmExLTJjNzQzM2M2Y2NhNSJ9.eyJpc3MiOiJzdXBlcmNlbGwiLCJhdWQiOiJzdXBlcmNlbGw6Z2FtZWFwaSIsImp0aSI6IjVkNDJmNGFmLTFjMjMtNDdjMy1iZGFkLTdmZDExZTc4ZDlhZSIsImlhdCI6MTc1MjI1OTkyMSwic3ViIjoiZGV2ZWxvcGVyLzNhOTgxOGVkLTEwNGEtM2ViNS04ZWQwLWRmZDEyNmQ3ZjZmOCIsInNjb3BlcyI6WyJicmF3bHN0YXJzIl0sImxpbWl0cyI6W3sidGllciI6ImRldmVsb3Blci9zaWx2ZXIiLCJ0eXBlIjoidGhyb3R0bGluZyJ9LHsiY2lkcnMiOlsiNDQuMjI2LjE0NS4yMTMiLCI1NC4xODcuMjAwLjI1NSIsIjM0LjIxMy4yMTQuNTUiLCIzNS4xNjQuOTUuMTU2IiwiNDQuMjMwLjk1LjE4MyJdLCJ0eXBlIjoiY2xpZW50In1dfQ.51DaRe_Tw2h6my3o1tK2IP5fhc2eRXSZCQLlLBwikohR-bQoBP4tBLr6yxECerw0Y5KPqD0vzSolXZFn_mqNMg'; 
+const BRAWL_STARS_API_KEY = 'METS-TA-CLÉ-D-API-ICI'; 
 
 // Middlewares
-app.use(cors()); // Autorise les requêtes cross-origin (depuis ton site sur InfinityFree)
-app.use(express.json()); // Permet au serveur de comprendre le JSON
+app.use(cors());
+app.use(express.json());
 
-/**
- * Endpoint pour vérifier un tag de joueur lors de l'inscription
- */
 app.post('/verify-player', async (req, res) => {
     const { playerTag } = req.body;
 
@@ -50,10 +47,6 @@ app.post('/verify-player', async (req, res) => {
     }
 });
 
-/**
- * Endpoint pour se connecter en vérifiant une action en jeu.
- * L'utilisateur doit avoir joué une partie amicale avec Shelly récemment.
- */
 app.post('/login-by-action', async (req, res) => {
     const { playerTag } = req.body;
 
@@ -82,7 +75,8 @@ app.post('/login-by-action', async (req, res) => {
             
             const isFriendlyGame = battle.type === 'friendly';
             const playedShelly = playerInBattle?.brawler.name === 'SHELLY';
-            const isCommunityMap = entry.event.map === null;
+            // ===== CORRECTION FINALE ICI =====
+            const isCommunityMap = entry.event?.map === null;
 
             return isFriendlyGame && playedShelly && isCommunityMap;
         });
@@ -110,7 +104,6 @@ app.post('/login-by-action', async (req, res) => {
         res.status(500).json({ error: 'Erreur interne du serveur.' });
     }
 });
-
 
 app.listen(port, () => {
     console.log(`Serveur démarré sur http://localhost:${port}`);
