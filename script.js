@@ -11,16 +11,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const showAuthButton = document.getElementById('show-auth-button');
     const messageDisplay = document.getElementById('message');
 
-    // ===================================================================
-    // FONCTION MANQUANTE À AJOUTER ICI
-    // ===================================================================
     function showMessage(msg, type) {
         messageDisplay.textContent = msg;
-        messageDisplay.className = type; // Applique la classe 'success' ou 'error'
+        messageDisplay.className = type;
     }
-    // ===================================================================
 
-    // Handle click on "Log In / Sign Up" button in the navbar
+    // ... (les fonctions pour changer de vue ne changent pas)
+
     showAuthButton.addEventListener('click', (e) => {
         e.preventDefault();
         welcomeSection.style.display = 'none';
@@ -32,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
         loginForm.reset();
     });
 
-    // Handle switching between Register and Login forms
     showLoginLink.addEventListener('click', (e) => {
         e.preventDefault();
         registerSection.style.display = 'none';
@@ -50,11 +46,10 @@ document.addEventListener('DOMContentLoaded', () => {
         registerForm.reset();
         loginForm.reset();
     });
-
-    // Handle register form submission
+    
+    // La logique d'inscription ne change pas
     registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-
         const username = registerForm['register-username'].value;
         const password = registerForm['register-password'].value;
         const playerTag = registerForm['register-player-tag'].value;
@@ -73,52 +68,36 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('https://brawlarena-gg.onrender.com/verify-player', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ playerTag: playerTag }),
             });
-
             const data = await response.json();
-
             if (!response.ok) {
                 showMessage(`Erreur : ${data.error || 'Tag joueur non valide.'}`, 'error');
                 return;
             }
-            
-            const brawlStarsData = data;
-
             users.push({
                 username: username,
                 password: password,
-                playerTag: brawlStarsData.tag,
-                inGameName: brawlStarsData.name
+                playerTag: data.tag,
+                inGameName: data.name
             });
-
             localStorage.setItem('users', JSON.stringify(users));
-            showMessage(`Compte créé pour ${brawlStarsData.name} ! Vous pouvez vous connecter.`, 'success');
-
+            showMessage(`Compte créé pour ${data.name} ! Vous pouvez vous connecter.`, 'success');
             setTimeout(() => {
                 registerSection.style.display = 'none';
                 loginSection.style.display = 'block';
                 messageDisplay.textContent = '';
                 registerForm.reset();
             }, 2000);
-
         } catch (error) {
-            console.error("Erreur lors de l'inscription:", error);
-            if (error instanceof TypeError) {
-                 showMessage('Erreur de communication. Vérifiez la console (F12) (problème de "Mixed Content" ?)', 'error');
-            } else {
-                 showMessage('Une erreur inattendue est survenue.', 'error');
-            }
+            showMessage('Erreur de communication avec le serveur.', 'error');
         }
     });
 
-    // Handle login form submission
+    // ===== NOUVELLE LOGIQUE DE CONNEXION SIMPLIFIÉE ICI =====
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-
         const playerTag = loginForm['login-player-tag'].value;
 
         if (!playerTag || !playerTag.startsWith('#')) {
@@ -129,7 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
         showMessage('Vérification en cours...', 'success');
 
         try {
-            const response = await fetch('https://brawlarena-gg.onrender.com/login-by-action', {
+            // On appelle le nouvel endpoint /login
+            const response = await fetch('https://brawlarena-gg.onrender.com/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -148,16 +128,18 @@ document.addEventListener('DOMContentLoaded', () => {
             let users = JSON.parse(localStorage.getItem('users')) || [];
             let user = users.find(u => u.playerTag === playerData.tag);
 
+            // Si l'utilisateur n'existe pas en local, on le crée
             if (!user) {
                 users.push({
                     username: playerData.name,
-                    password: '',
+                    password: '', // Pas de mot de passe pour cette méthode
                     playerTag: playerData.tag,
                     inGameName: playerData.name
                 });
                 localStorage.setItem('users', JSON.stringify(users));
             }
-
+            
+            // On connecte l'utilisateur
             localStorage.setItem('loggedInUsername', playerData.name);
             
             showMessage(data.message, 'success');
@@ -167,12 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 1500);
 
         } catch (error) {
-            console.error('Erreur lors de la tentative de connexion par action:', error);
-             if (error instanceof TypeError) {
-                showMessage('Erreur de communication. Vérifiez la console (F12) (problème de "Mixed Content" ?)', 'error');
-            } else {
-                showMessage('Une erreur inattendue est survenue.', 'error');
-            }
+            showMessage('Erreur de communication avec le serveur.', 'error');
         }
     });
 });

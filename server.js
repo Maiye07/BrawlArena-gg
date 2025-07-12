@@ -5,14 +5,14 @@ const cors = require('cors');
 const app = express();
 const port = 3000;
 
-// Collez votre NOUVELLE clé API secrète ici, entre les apostrophes
+// Pensez à remplacer ceci par votre clé API
 const BRAWL_STARS_API_KEY = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6IjI4YTMxOGY3LTAwMDAtYTFlYi03ZmExLTJjNzQzM2M2Y2NhNSJ9.eyJpc3MiOiJzdXBlcmNlbGwiLCJhdWQiOiJzdXBlcmNlbGw6Z2FtZWFwaSIsImp0aSI6IjVkNDJmNGFmLTFjMjMtNDdjMy1iZGFkLTdmZDExZTc4ZDlhZSIsImlhdCI6MTc1MjI1OTkyMSwic3ViIjoiZGV2ZWxvcGVyLzNhOTgxOGVkLTEwNGEtM2ViNS04ZWQwLWRmZDEyNmQ3ZjZmOCIsInNjb3BlcyI6WyJicmF3bHN0YXJzIl0sImxpbWl0cyI6W3sidGllciI6ImRldmVsb3Blci9zaWx2ZXIiLCJ0eXBlIjoidGhyb3R0bGluZyJ9LHsiY2lkcnMiOlsiNDQuMjI2LjE0NS4yMTMiLCI1NC4xODcuMjAwLjI1NSIsIjM0LjIxMy4yMTQuNTUiLCIzNS4xNjQuOTUuMTU2IiwiNDQuMjMwLjk1LjE4MyJdLCJ0eXBlIjoiY2xpZW50In1dfQ.51DaRe_Tw2h6my3o1tK2IP5fhc2eRXSZCQLlLBwikohR-bQoBP4tBLr6yxECerw0Y5KPqD0vzSolXZFn_mqNMg'; 
 
 // Middlewares
 app.use(cors());
 app.use(express.json());
 
-// Endpoint pour l'inscription
+// L'inscription ne change pas
 app.post('/verify-player', async (req, res) => {
     const { playerTag } = req.body;
     if (!playerTag) {
@@ -39,51 +39,38 @@ app.post('/verify-player', async (req, res) => {
     }
 });
 
-// Endpoint pour la connexion
-app.post('/login-by-action', async (req, res) => {
+// ===== NOUVELLE LOGIQUE DE CONNEXION SIMPLIFIÉE =====
+app.post('/login', async (req, res) => {
     const { playerTag } = req.body;
     if (!playerTag) {
         return res.status(400).json({ error: 'Le tag du joueur est manquant.' });
     }
     const formattedTag = playerTag.replace('#', '%23');
-    const battleLogUrl = `https://api.brawlstars.com/v1/players/${formattedTag}/battlelog`;
     const playerInfoUrl = `https://api.brawlstars.com/v1/players/${formattedTag}`;
     try {
-        const battleLogResponse = await fetch(battleLogUrl, {
+        // On vérifie simplement que le joueur existe
+        const playerInfoResponse = await fetch(playerInfoUrl, {
             headers: { 'Authorization': `Bearer ${BRAWL_STARS_API_KEY}` }
         });
-        if (!battleLogResponse.ok) {
-            return res.status(battleLogResponse.status).json({ error: 'Impossible de récupérer le journal de combats. Le tag est-il correct ?' });
-        }
-        const battleLog = await battleLogResponse.json();
-        
-        const verificationBattle = battleLog.items.find(entry => {
-            const battle = entry.battle;
-            const playerInBattle = battle.players?.find(p => p.tag === playerTag);
-            
-            const isFriendlyGame = battle.type === 'friendly';
-            const playedShelly = playerInBattle?.brawler?.name === 'SHELLY';
 
-            return isFriendlyGame && playedShelly;
+        // Si le tag est invalide ou la clé API mauvaise, on renvoie une erreur
+        if (!playerInfoResponse.ok) {
+            return res.status(playerInfoResponse.status).json({ error: 'Connexion impossible. Le tag est-il correct ?' });
+        }
+
+        const playerData = await playerInfoResponse.json();
+
+        // Si tout va bien, la connexion est réussie
+        res.status(200).json({
+            message: 'Connexion réussie !',
+            player: {
+                name: playerData.name,
+                tag: playerData.tag
+            }
         });
 
-        if (verificationBattle) {
-            const playerInfoResponse = await fetch(playerInfoUrl, {
-                headers: { 'Authorization': `Bearer ${BRAWL_STARS_API_KEY}` }
-            });
-            const playerData = await playerInfoResponse.json();
-            res.status(200).json({
-                message: 'Vérification réussie ! Connexion en cours...',
-                player: {
-                    name: playerData.name,
-                    tag: playerData.tag
-                }
-            });
-        } else {
-            res.status(403).json({ error: "Action non vérifiée. Veuillez jouer une partie AMICALE avec Shelly et réessayez." });
-        }
     } catch (error) {
-        console.error('Erreur interne lors de la vérification de l\'action:', error);
+        console.error('Erreur interne lors de la connexion:', error);
         res.status(500).json({ error: 'Erreur interne du serveur.' });
     }
 });
