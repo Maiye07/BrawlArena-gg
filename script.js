@@ -1,75 +1,118 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Sélection des éléments
+    const welcomeSection = document.getElementById('welcome-section');
+    const authContainer = document.getElementById('auth-container');
     const registerSection = document.getElementById('register-section');
     const loginSection = document.getElementById('login-section');
     const registerForm = document.getElementById('register-form');
     const loginForm = document.getElementById('login-form');
     const showLoginLink = document.getElementById('show-login');
     const showRegisterLink = document.getElementById('show-register');
+    const showAuthButton = document.getElementById('show-auth-button');
     const messageDisplay = document.getElementById('message');
 
-    // Afficher le formulaire de connexion
+    function showMessage(msg, type) {
+        messageDisplay.textContent = msg;
+        messageDisplay.className = type;
+    }
+
+    // --- Logique pour afficher/cacher les formulaires ---
+    showAuthButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        welcomeSection.style.display = 'none';
+        authContainer.style.display = 'block';
+        loginSection.style.display = 'block';
+        registerSection.style.display = 'none';
+    });
+
     showLoginLink.addEventListener('click', (e) => {
         e.preventDefault();
         registerSection.style.display = 'none';
         loginSection.style.display = 'block';
-        messageDisplay.textContent = '';
     });
 
-    // Afficher le formulaire d'inscription
     showRegisterLink.addEventListener('click', (e) => {
         e.preventDefault();
         loginSection.style.display = 'none';
         registerSection.style.display = 'block';
-        messageDisplay.textContent = '';
     });
-
-    // Logique d'inscription
-    registerForm.addEventListener('submit', (e) => {
+    
+    // --- Logique d'inscription (communique avec le serveur) ---
+    registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const username = document.getElementById('register-username').value;
         const password = document.getElementById('register-password').value;
+        const playerTag = document.getElementById('register-player-tag').value;
 
-        // On récupère les utilisateurs existants ou un tableau vide
-        const users = JSON.parse(localStorage.getItem('users')) || [];
-
-        // On vérifie si l'utilisateur existe déjà
-        if (users.find(user => user.username === username)) {
-            messageDisplay.textContent = 'Ce nom d\'utilisateur est déjà pris.';
-            messageDisplay.className = 'error';
+        if (!playerTag.startsWith('#')) {
+            showMessage('Le tag du joueur doit commencer par #.', 'error');
             return;
         }
 
-        // On ajoute le nouvel utilisateur
-        users.push({ username, password });
-        
-        // On sauvegarde la liste mise à jour
-        localStorage.setItem('users', JSON.stringify(users));
-
-        messageDisplay.textContent = 'Compte créé avec succès ! Vous pouvez maintenant vous connecter.';
-        messageDisplay.className = 'success';
-        registerForm.reset();
+        showMessage('Vérification du tag Brawl Stars...', 'success');
+        try {
+            // On vérifie le tag auprès du serveur
+            const response = await fetch('https://brawlarena-gg.onrender.com/verify-player', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ playerTag }),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                showMessage(`Erreur : ${data.error || 'Tag joueur non valide.'}`, 'error');
+                return;
+            }
+            
+            // Si le tag est bon, on sauvegarde en local
+            let users = JSON.parse(localStorage.getItem('users')) || [];
+            if (users.find(user => user.username === username)) {
+                showMessage("Ce nom d'utilisateur est déjà pris.", 'error');
+                return;
+            }
+            users.push({
+                username,
+                password,
+                playerTag: data.tag,
+                inGameName: data.name
+            });
+            localStorage.setItem('users', JSON.stringify(users));
+            showMessage(`Compte créé pour ${data.name} ! Vous pouvez vous connecter.`, 'success');
+            
+        } catch (error) {
+            showMessage('Erreur de communication avec le serveur.', 'error');
+        }
     });
 
-    // Logique de connexion
-    loginForm.addEventListener('submit', (e) => {
+    // --- Logique de connexion (communique avec le serveur) ---
+    loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const username = document.getElementById('login-username').value;
-        const password = document.getElementById('login-password').value;
+        const playerTag = document.getElementById('login-player-tag').value;
 
-        const users = JSON.parse(localStorage.getItem('users')) || [];
+        if (!playerTag.startsWith('#')) {
+            showMessage('Le tag du joueur doit commencer par #.', 'error');
+            return;
+        }
+        
+        showMessage('Vérification en cours...', 'success');
+        try {
+            // On appelle le serveur pour la connexion
+            const response = await fetch('https://brawlarena-gg.onrender.com/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ playerTag }),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                showMessage(data.error, 'error');
+                return;
+            }
 
-        // On cherche un utilisateur avec le bon pseudo ET le bon mot de passe
-        const user = users.find(user => user.username === username && user.password === password);
+            // Si le serveur confirme, on connecte l'utilisateur
+            localStorage.setItem('loggedInUsername', data.player.name);
+            window.location.href = 'dashboard.html';
 
-        if (user) {
-            // Si l'utilisateur est trouvé, on le connecte
-            localStorage.setItem('loggedInUser', username);
-            window.location.href = 'dashboard.html'; // Redirection vers le tableau de bord
-        } else {
-            // Sinon, on affiche une erreur
-            messageDisplay.textContent = 'Nom d\'utilisateur ou mot de passe incorrect.';
-            messageDisplay.className = 'error';
+        } catch (error) {
+            showMessage('Erreur de communication avec le serveur.', 'error');
         }
     });
 });
