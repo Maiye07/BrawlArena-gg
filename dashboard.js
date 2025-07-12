@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- CONFIGURATION ---
-    const API_URL = 'https://brawlarena-gg.onrender.com'; // Remplacez par http://localhost:3000 si vous testez en local
+    const API_URL = 'https://brawlarena-gg.onrender.com';
 
     // --- SÉLECTION DES ÉLÉMENTS DU DOM ---
     const utcClockElement = document.getElementById('utc-clock');
@@ -51,34 +51,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const playerIdInput = document.getElementById('player-id-input');
     const settingsMessage = document.getElementById('settings-message');
 
+    const showUsersButton = document.getElementById('show-users-button');
+    const usersListContainer = document.getElementById('users-list-container');
+
     // --- FONCTIONS ET VARIABLES DE TRI ---
     const rankOrder = ['Légendaire I', 'Légendaire II', 'Légendaire III', 'Master I', 'Master II', 'Master III', 'Pro'];
 
     // =================================================================
-    // NOUVELLES FONCTIONS DE GESTION DES SCRIMS (VIA SERVEUR)
+    // FONCTIONS DE GESTION DES SCRIMS (VIA SERVEUR)
     // =================================================================
-
-    /**
-     * Récupère les scrims du serveur et les affiche dans le DOM.
-     */
     async function renderScrims() {
         try {
             const response = await fetch(`${API_URL}/scrims`);
-            if (!response.ok) {
-                throw new Error('La récupération des scrims a échoué.');
-            }
+            if (!response.ok) throw new Error('La récupération des scrims a échoué.');
+            
             let scrims = await response.json();
             const userStats = JSON.parse(localStorage.getItem('userStats')) || {};
             
-            // Logique de tri
             const sortMethod = sortScrimsSelect.value;
-            if (sortMethod === 'time-asc') {
-                scrims.sort((a, b) => `${a.eventDate}T${a.startTime}`.localeCompare(`${b.eventDate}T${b.startTime}`));
-            } else if (sortMethod === 'rank-asc') {
-                scrims.sort((a, b) => rankOrder.indexOf(a.avgRank) - rankOrder.indexOf(b.avgRank));
-            } else if (sortMethod === 'rank-desc') {
-                scrims.sort((a, b) => rankOrder.indexOf(b.avgRank) - rankOrder.indexOf(a.avgRank));
-            }
+            if (sortMethod === 'time-asc') scrims.sort((a, b) => `${a.eventDate}T${a.startTime}`.localeCompare(`${b.eventDate}T${b.startTime}`));
+            else if (sortMethod === 'rank-asc') scrims.sort((a, b) => rankOrder.indexOf(a.avgRank) - rankOrder.indexOf(b.avgRank));
+            else if (sortMethod === 'rank-desc') scrims.sort((a, b) => rankOrder.indexOf(b.avgRank) - rankOrder.indexOf(a.avgRank));
 
             scrimsListContainer.innerHTML = '';
             if (scrims.length === 0) {
@@ -94,17 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isCreator = loggedInUsername === scrim.creator;
                 const isFull = scrim.players.length >= 6;
                 
-                // Détermine quel bouton d'action afficher
-                let actionButtonHTML = '';
-                if (isUserInScrim) {
-                    actionButtonHTML = `<button class="button leave-button" data-scrim-id="${scrim.id}">Quitter</button>`;
-                } else if (!isFull) {
-                    actionButtonHTML = `<button class="button join-button" data-scrim-id="${scrim.id}">Rejoindre</button>`;
-                } else {
-                    actionButtonHTML = `<button class="button" disabled>Plein</button>`;
-                }
+                let actionButtonHTML = isUserInScrim ? `<button class="button leave-button" data-scrim-id="${scrim.id}">Quitter</button>` : (!isFull ? `<button class="button join-button" data-scrim-id="${scrim.id}">Rejoindre</button>` : `<button class="button" disabled>Plein</button>`);
 
-                // Construit la liste des joueurs avec leurs badges
                 const playersHTML = scrim.players.map(player => {
                     const isPlayerCreator = player === scrim.creator;
                     const isPlayerPremium = userStats[player]?.isPremium || false;
@@ -113,7 +97,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     return `<li>${playerNameHTML} ${badges}</li>`;
                 }).join('');
 
-                // Gère l'affichage de l'ID de la partie
                 let gameIdHTML = '';
                 const currentIdText = scrim.gameId || 'Non défini';
                 if (isUserInScrim) {
@@ -124,22 +107,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     gameIdHTML = `<p><strong>ID Partie :</strong> Rejoignez pour voir</p>`;
                 }
                 
-                // Formate la date pour l'affichage
                 const scrimDate = new Date(`${scrim.eventDate}T00:00:00Z`);
-                const today = new Date(); today.setUTCHours(0,0,0,0);
+                const today = new Date(); today.setUTCHours(0, 0, 0, 0);
                 const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-                let dateLabel = scrimDate.getTime() === today.getTime() ? "Aujourd'hui" : scrimDate.getTime() === tomorrow.getTime() ? "Demain" : scrimDate.toLocaleDateString('fr-FR', {weekday: 'long', day: 'numeric', month: 'long'});
+                let dateLabel = scrimDate.getTime() === today.getTime() ? "Aujourd'hui" : scrimDate.getTime() === tomorrow.getTime() ? "Demain" : scrimDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
-                // Remplit la carte avec toutes les informations
                 card.innerHTML = `
-                    <h3>${scrim.roomName}</h3>
-                    ${gameIdHTML}
+                    <h3>${scrim.roomName}</h3> ${gameIdHTML}
                     <p><strong>Rang Moyen :</strong> ${scrim.avgRank}</p>
                     <p><strong>Début (UTC) :</strong> ${dateLabel} à ${scrim.startTime}</p>
-                    <div class="players-list">
-                        <strong>Joueurs (${scrim.players.length}/6) :</strong>
-                        <ul>${playersHTML}</ul>
-                    </div>
+                    <div class="players-list"><strong>Joueurs (${scrim.players.length}/6) :</strong><ul>${playersHTML}</ul></div>
                     <div class="scrim-actions">${actionButtonHTML}</div>
                 `;
                 scrimsListContainer.appendChild(card);
@@ -150,15 +127,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // =================================================================
-    // FONCTIONS UTILITAIRES (INCHANGÉES)
+    // FONCTIONS UTILITAIRES
     // =================================================================
-
     function updateUtcClock() {
         const now = new Date();
-        const hours = String(now.getUTCHours()).padStart(2, '0');
-        const minutes = String(now.getUTCMinutes()).padStart(2, '0');
-        const seconds = String(now.getUTCSeconds()).padStart(2, '0');
-        utcClockElement.textContent = `UTC ${hours}:${minutes}:${seconds}`;
+        utcClockElement.textContent = `UTC ${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}:${String(now.getUTCSeconds()).padStart(2, '0')}`;
     }
 
     function populateDateSelect() {
@@ -219,9 +192,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // =================================================================
     // GESTIONNAIRES D'ÉVÉNEMENTS
     // =================================================================
+    showUsersButton.addEventListener('click', async () => {
+        try {
+            usersListContainer.innerHTML = '<p>Chargement des comptes...</p>';
+            const response = await fetch(`${API_URL}/users?requestingUser=${encodeURIComponent(loggedInUsername)}`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Une erreur est survenue.");
+            }
+            const users = await response.json();
+            if (users.length === 0) {
+                usersListContainer.innerHTML = '<p>Aucun compte enregistré.</p>';
+                return;
+            }
+            let usersHTML = '<h3>Comptes enregistrés :</h3><ul>';
+            users.forEach(user => { usersHTML += `<li>${user.username}</li>`; });
+            usersHTML += '</ul>';
+            usersListContainer.innerHTML = usersHTML;
+        } catch (error) {
+            usersListContainer.innerHTML = `<p class="error">${error.message}</p>`;
+        }
+    });
 
-    // --- Actions sur les Scrims ---
-    
     sortScrimsSelect.addEventListener('change', renderScrims);
 
     createScrimForm.addEventListener('submit', async (e) => {
@@ -234,24 +226,12 @@ document.addEventListener('DOMContentLoaded', () => {
             avgRank: document.getElementById('scrim-rank').value,
             startTime: document.getElementById('scrim-start-time').value,
         };
-
         try {
-            const response = await fetch(`${API_URL}/scrims`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(scrimData),
-            });
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || "Erreur de création");
-            }
-
+            const response = await fetch(`${API_URL}/scrims`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(scrimData) });
+            if (!response.ok) throw new Error((await response.json()).error || "Erreur de création");
             let userStats = JSON.parse(localStorage.getItem('userStats'));
-            if (!userStats[loggedInUsername].isPremium) {
-                userStats[loggedInUsername].dailyScrims++;
-            }
+            if (!userStats[loggedInUsername].isPremium) userStats[loggedInUsername].dailyScrims++;
             localStorage.setItem('userStats', JSON.stringify(userStats));
-
             createScrimForm.reset();
             createScrimModal.style.display = 'none';
             await renderScrims();
@@ -264,7 +244,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const button = e.target.closest('button');
         if (!button) return;
 
-        // Gérer le clic sur le bouton "Modifier ID"
         if (button.classList.contains('edit-id-button')) {
             const container = button.closest('.game-id-container');
             const scrimId = container.dataset.scrimId;
@@ -278,58 +257,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const scrimId = button.dataset.scrimId;
         if (!scrimId) return;
 
-        // Gérer le clic sur les boutons d'action (Rejoindre, Quitter, Sauvegarder ID)
         try {
             let response;
-            if (button.classList.contains('join-button')) {
-                response = await fetch(`${API_URL}/scrims/${scrimId}/join`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: loggedInUsername }),
-                });
-            } else if (button.classList.contains('leave-button')) {
-                response = await fetch(`${API_URL}/scrims/${scrimId}/leave`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: loggedInUsername }),
-                });
-            } else if (button.classList.contains('save-id-button')) {
+            if (button.classList.contains('join-button')) response = await fetch(`${API_URL}/scrims/${scrimId}/join`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: loggedInUsername }) });
+            else if (button.classList.contains('leave-button')) response = await fetch(`${API_URL}/scrims/${scrimId}/leave`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: loggedInUsername }) });
+            else if (button.classList.contains('save-id-button')) {
                 const newId = button.parentElement.querySelector('.edit-id-input').value.trim();
-                response = await fetch(`${API_URL}/scrims/${scrimId}/gameid`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ gameId: newId }),
-                });
+                response = await fetch(`${API_URL}/scrims/${scrimId}/gameid`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gameId: newId }) });
             }
-
-            if (response && !response.ok) {
-                const err = await response.json();
-                throw new Error(err.error);
-            }
+            if (response && !response.ok) throw new Error((await response.json()).error);
             await renderScrims();
         } catch (error) {
             alert(error.message);
         }
     });
 
-    // --- Navigation et autres actions ---
-
-    logoutButton.addEventListener('click', () => {
-        localStorage.removeItem('loggedInUsername');
-        window.location.href = 'index.html';
-    });
-
-    links.scrims.addEventListener('click', async (e) => {
-        e.preventDefault();
-        await renderScrims();
-        showSection(sections.scrims);
-    });
-
+    logoutButton.addEventListener('click', () => { localStorage.removeItem('loggedInUsername'); window.location.href = 'index.html'; });
+    links.scrims.addEventListener('click', async (e) => { e.preventDefault(); await renderScrims(); showSection(sections.scrims); });
     links.profile.addEventListener('click', (e) => { e.preventDefault(); updateProfileView(); showSection(sections.profile); });
     links.settings.addEventListener('click', (e) => { e.preventDefault(); showSection(sections.settings); });
     links.tournaments.addEventListener('click', (e) => { e.preventDefault(); alert('La section Tournois est en cours de développement !'); });
     if (links.about) links.about.addEventListener('click', (e) => { e.preventDefault(); alert("Section 'À propos' en cours de construction !"); });
-
     showScrimModalButton.addEventListener('click', () => { createScrimModal.style.display = 'flex'; });
     closeScrimModalButton.addEventListener('click', () => createScrimModal.style.display = 'none');
     window.addEventListener('click', (e) => { if (e.target == createScrimModal) createScrimModal.style.display = 'none'; });
@@ -362,7 +310,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // =================================================================
     // INITIALISATION DE LA PAGE
     // =================================================================
-
     usernameDisplay.textContent = loggedInUsername;
     displayUsernameInNavbar.textContent = loggedInUsername;
     initializeUserStats();
@@ -371,11 +318,5 @@ document.addEventListener('DOMContentLoaded', () => {
     showSection(sections.home);
     updateUtcClock();
     setInterval(updateUtcClock, 1000);
-    
-    // Rafraîchit la liste des scrims toutes les 30 secondes pour voir les mises à jour
-    setInterval(async () => {
-        if (sections.scrims.style.display === 'block') {
-            await renderScrims();
-        }
-    }, 30000);
+    setInterval(async () => { if (sections.scrims.style.display === 'block') await renderScrims(); }, 30000);
 });

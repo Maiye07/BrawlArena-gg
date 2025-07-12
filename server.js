@@ -14,27 +14,24 @@ const USERS_FILE = 'users.json';
 const SCRIMS_FILE = 'scrims.json';
 
 // --- FONCTION POUR CHARGER LES DONNÉES DEPUIS UN FICHIER ---
-// Cette fonction lit un fichier et retourne son contenu parsé, ou un tableau vide en cas d'erreur (ex: le fichier n'existe pas encore)
 const loadData = (filePath) => {
     try {
         const data = fs.readFileSync(filePath, 'utf8');
         return JSON.parse(data);
     } catch (error) {
-        // Si le fichier n'existe pas, c'est normal au premier lancement. On retourne un tableau vide.
         if (error.code === 'ENOENT') {
             return [];
         }
-        // Pour les autres erreurs, on les affiche.
         console.error(`Erreur lors du chargement du fichier ${filePath}:`, error);
         return [];
     }
 };
 
-// --- BASES DE DONNÉES EN MÉMOIRE, INITIALISÉES AVEC LES DONNÉES DES FICHIERS ---
+// --- BASES DE DONNÉES, INITIALISÉES AVEC LES DONNÉES DES FICHIERS ---
 let users = loadData(USERS_FILE);
 let scrims = loadData(SCRIMS_FILE);
 
-// --- FONCTIONS POUR SAUVEGARDER LES DONNÉES DANS LES FICHIERS ---
+// --- FONCTIONS POUR SAUVEGARDER LES DONNÉES ---
 const saveUsers = () => {
     fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), (err) => {
         if (err) console.error('Erreur lors de la sauvegarde des utilisateurs:', err);
@@ -55,13 +52,15 @@ app.post('/register', (req, res) => {
     if (!username || !password) {
         return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis.' });
     }
-    const userExists = users.find(user => user.username === username);
+
+    const userExists = users.find(user => user.username.toLowerCase() === username.toLowerCase());
     if (userExists) {
         return res.status(409).json({ error: 'Ce nom d\'utilisateur est déjà pris.' });
     }
+
     const newUser = { username, password };
     users.push(newUser);
-    saveUsers(); // On sauvegarde les utilisateurs après en avoir ajouté un nouveau
+    saveUsers();
     res.status(201).json({ message: 'Compte créé avec succès ! Vous pouvez vous connecter.' });
 });
 
@@ -78,6 +77,17 @@ app.post('/login', (req, res) => {
         message: 'Connexion réussie !',
         username: user.username
     });
+});
+
+app.get('/users', (req, res) => {
+    const { requestingUser } = req.query;
+
+    if (requestingUser !== 'BrawlArena.gg') {
+        return res.status(403).json({ error: 'Accès réservé à l\'administrateur.' });
+    }
+
+    const sanitizedUsers = users.map(user => ({ username: user.username }));
+    res.status(200).json(sanitizedUsers);
 });
 
 // ===============================================
@@ -100,7 +110,7 @@ app.post('/scrims', (req, res) => {
         players: [req.body.creator]
     };
     scrims.push(newScrim);
-    saveScrims(); // On sauvegarde après chaque modification
+    saveScrims();
     res.status(201).json(newScrim);
 });
 
@@ -108,18 +118,12 @@ app.post('/scrims/:id/join', (req, res) => {
     const scrim = scrims.find(s => s.id == req.params.id);
     const { username } = req.body;
 
-    if (!scrim) {
-        return res.status(404).json({ error: 'Scrim non trouvé.' });
-    }
-    if (scrim.players.length >= 6) {
-        return res.status(400).json({ error: 'Le scrim est déjà plein.' });
-    }
-    if (scrim.players.includes(username)) {
-        return res.status(400).json({ error: 'Vous êtes déjà dans ce scrim.' });
-    }
+    if (!scrim) return res.status(404).json({ error: 'Scrim non trouvé.' });
+    if (scrim.players.length >= 6) return res.status(400).json({ error: 'Le scrim est déjà plein.' });
+    if (scrim.players.includes(username)) return res.status(400).json({ error: 'Vous êtes déjà dans ce scrim.' });
 
     scrim.players.push(username);
-    saveScrims(); // On sauvegarde après chaque modification
+    saveScrims();
     res.status(200).json(scrim);
 });
 
@@ -128,9 +132,7 @@ app.post('/scrims/:id/leave', (req, res) => {
     const { username } = req.body;
     const scrimIndex = scrims.findIndex(s => s.id === scrimId);
 
-    if (scrimIndex === -1) {
-        return res.status(404).json({ error: 'Scrim non trouvé.' });
-    }
+    if (scrimIndex === -1) return res.status(404).json({ error: 'Scrim non trouvé.' });
 
     const scrim = scrims[scrimIndex];
     if (scrim.creator === username) {
@@ -138,7 +140,7 @@ app.post('/scrims/:id/leave', (req, res) => {
     } else {
         scrim.players = scrim.players.filter(p => p !== username);
     }
-    saveScrims(); // On sauvegarde après chaque modification
+    saveScrims();
     res.status(200).json({ message: 'Action effectuée avec succès.' });
 });
 
@@ -146,12 +148,10 @@ app.patch('/scrims/:id/gameid', (req, res) => {
     const scrim = scrims.find(s => s.id == req.params.id);
     const { gameId } = req.body;
 
-    if (!scrim) {
-        return res.status(404).json({ error: 'Scrim non trouvé.' });
-    }
-    
+    if (!scrim) return res.status(404).json({ error: 'Scrim non trouvé.' });
+
     scrim.gameId = gameId;
-    saveScrims(); // On sauvegarde après chaque modification
+    saveScrims();
     res.status(200).json(scrim);
 });
 
