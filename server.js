@@ -5,14 +5,14 @@ const cors = require('cors');
 const app = express();
 const port = 3000;
 
-// Votre clé d'API secrète de Supercell
+// Collez votre NOUVELLE clé API secrète ici, entre les apostrophes
 const BRAWL_STARS_API_KEY = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6IjI4YTMxOGY3LTAwMDAtYTFlYi03ZmExLTJjNzQzM2M2Y2NhNSJ9.eyJpc3MiOiJzdXBlcmNlbGwiLCJhdWQiOiJzdXBlcmNlbGw6Z2FtZWFwaSIsImp0aSI6IjVkNDJmNGFmLTFjMjMtNDdjMy1iZGFkLTdmZDExZTc4ZDlhZSIsImlhdCI6MTc1MjI1OTkyMSwic3ViIjoiZGV2ZWxvcGVyLzNhOTgxOGVkLTEwNGEtM2ViNS04ZWQwLWRmZDEyNmQ3ZjZmOCIsInNjb3BlcyI6WyJicmF3bHN0YXJzIl0sImxpbWl0cyI6W3sidGllciI6ImRldmVsb3Blci9zaWx2ZXIiLCJ0eXBlIjoidGhyb3R0bGluZyJ9LHsiY2lkcnMiOlsiNDQuMjI2LjE0NS4yMTMiLCI1NC4xODcuMjAwLjI1NSIsIjM0LjIxMy4yMTQuNTUiLCIzNS4xNjQuOTUuMTU2IiwiNDQuMjMwLjk1LjE4MyJdLCJ0eXBlIjoiY2xpZW50In1dfQ.51DaRe_Tw2h6my3o1tK2IP5fhc2eRXSZCQLlLBwikohR-bQoBP4tBLr6yxECerw0Y5KPqD0vzSolXZFn_mqNMg'; 
 
 // Middlewares
 app.use(cors());
 app.use(express.json());
 
-// Endpoint pour l'inscription (inchangé)
+// Endpoint pour l'inscription
 app.post('/verify-player', async (req, res) => {
     const { playerTag } = req.body;
     if (!playerTag) {
@@ -39,7 +39,7 @@ app.post('/verify-player', async (req, res) => {
     }
 });
 
-// Endpoint pour la connexion (logique simplifiée)
+// Endpoint pour la connexion
 app.post('/login-by-action', async (req, res) => {
     const { playerTag } = req.body;
     if (!playerTag) {
@@ -57,7 +57,6 @@ app.post('/login-by-action', async (req, res) => {
         }
         const battleLog = await battleLogResponse.json();
         
-        // ===== LOGIQUE DE VÉRIFICATION SIMPLIFIÉE ICI =====
         const verificationBattle = battleLog.items.find(entry => {
             const battle = entry.battle;
             const playerInBattle = battle.players?.find(p => p.tag === playerTag);
@@ -65,7 +64,6 @@ app.post('/login-by-action', async (req, res) => {
             const isFriendlyGame = battle.type === 'friendly';
             const playedShelly = playerInBattle?.brawler?.name === 'SHELLY';
 
-            // On ne vérifie plus la carte, juste ces deux conditions
             return isFriendlyGame && playedShelly;
         });
 
