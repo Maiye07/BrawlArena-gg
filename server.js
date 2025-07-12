@@ -4,65 +4,126 @@ const cors = require('cors');
 const app = express();
 const port = 3000;
 
-// Middlewares pour autoriser les requêtes cross-origin et parser le JSON
+// Middlewares
 app.use(cors());
 app.use(express.json());
 
-// Base de données en mémoire (pour la simplicité, remplacez par une vraie base de données en production)
+// --- BASES DE DONNÉES EN MÉMOIRE ---
 const users = [];
+const scrims = []; // On stocke les scrims ici maintenant !
 
-/**
- * Endpoint pour l'inscription de nouveaux utilisateurs.
- * Prend un nom d'utilisateur et un mot de passe.
- */
+// ===============================================
+//      ROUTES POUR LES UTILISATEURS (INCHANGÉ)
+// ===============================================
 app.post('/register', (req, res) => {
     const { username, password } = req.body;
-
-    // Vérifications simples
     if (!username || !password) {
         return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis.' });
     }
-
-    // On vérifie si l'utilisateur existe déjà
     const userExists = users.find(user => user.username === username);
     if (userExists) {
         return res.status(409).json({ error: 'Ce nom d\'utilisateur est déjà pris.' });
     }
-
-    // On sauvegarde le nouvel utilisateur
     const newUser = { username, password };
     users.push(newUser);
-    console.log('Utilisateurs enregistrés:', users); // Pour le débogage
-
-    // On retourne une réponse de succès
     res.status(201).json({ message: 'Compte créé avec succès ! Vous pouvez vous connecter.' });
 });
 
-/**
- * Endpoint pour la connexion des utilisateurs.
- * Vérifie le nom d'utilisateur et le mot de passe.
- */
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
-
-    // Vérifications simples
     if (!username || !password) {
         return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis.' });
     }
-
-    // On cherche l'utilisateur et on vérifie son mot de passe
     const user = users.find(u => u.username === username && u.password === password);
-
     if (!user) {
         return res.status(401).json({ error: 'Nom d\'utilisateur ou mot de passe incorrect.' });
     }
-
-    // Si la connexion réussit, on renvoie un message de succès et le nom d'utilisateur
     res.status(200).json({
         message: 'Connexion réussie !',
-        username: user.username // On renvoie le pseudo pour le sauvegarder côté client
+        username: user.username
     });
 });
+
+// ===============================================
+//      NOUVELLES ROUTES POUR LES SCRIMS
+// ===============================================
+
+// Obtenir la liste de tous les scrims
+app.get('/scrims', (req, res) => {
+    // On peut ajouter une logique pour nettoyer les vieux scrims ici si besoin
+    res.status(200).json(scrims);
+});
+
+// Créer un nouveau scrim
+app.post('/scrims', (req, res) => {
+    const newScrim = {
+        id: Date.now(),
+        creator: req.body.creator,
+        eventDate: req.body.eventDate,
+        roomName: req.body.roomName,
+        gameId: req.body.gameId,
+        avgRank: req.body.avgRank,
+        startTime: req.body.startTime,
+        players: [req.body.creator] // Le créateur rejoint automatiquement
+    };
+    scrims.push(newScrim);
+    res.status(201).json(newScrim);
+});
+
+// Rejoindre un scrim
+app.post('/scrims/:id/join', (req, res) => {
+    const scrim = scrims.find(s => s.id == req.params.id);
+    const { username } = req.body;
+
+    if (!scrim) {
+        return res.status(404).json({ error: 'Scrim non trouvé.' });
+    }
+    if (scrim.players.length >= 6) {
+        return res.status(400).json({ error: 'Le scrim est déjà plein.' });
+    }
+    if (scrim.players.includes(username)) {
+        return res.status(400).json({ error: 'Vous êtes déjà dans ce scrim.' });
+    }
+
+    scrim.players.push(username);
+    res.status(200).json(scrim);
+});
+
+// Quitter ou supprimer un scrim
+app.post('/scrims/:id/leave', (req, res) => {
+    const scrimId = parseInt(req.params.id, 10);
+    const { username } = req.body;
+    const scrimIndex = scrims.findIndex(s => s.id === scrimId);
+
+    if (scrimIndex === -1) {
+        return res.status(404).json({ error: 'Scrim non trouvé.' });
+    }
+
+    const scrim = scrims[scrimIndex];
+    if (scrim.creator === username) {
+        // Si le créateur quitte, le scrim est supprimé
+        scrims.splice(scrimIndex, 1);
+        res.status(200).json({ message: 'Scrim supprimé.' });
+    } else {
+        // Sinon, seul le joueur est retiré
+        scrim.players = scrim.players.filter(p => p !== username);
+        res.status(200).json(scrim);
+    }
+});
+
+// Mettre à jour l'ID de la partie
+app.patch('/scrims/:id/gameid', (req, res) => {
+    const scrim = scrims.find(s => s.id == req.params.id);
+    const { gameId } = req.body;
+
+    if (!scrim) {
+        return res.status(404).json({ error: 'Scrim non trouvé.' });
+    }
+    
+    scrim.gameId = gameId;
+    res.status(200).json(scrim);
+});
+
 
 app.listen(port, () => {
     console.log(`Serveur démarré sur http://localhost:${port}`);
