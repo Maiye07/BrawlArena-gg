@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs'); // Importer le module File System de Node.js
 
 const app = express();
 const port = 3000;
@@ -8,12 +9,46 @@ const port = 3000;
 app.use(cors());
 app.use(express.json());
 
-// --- BASES DE DONNÉES EN MÉMOIRE ---
-const users = [];
-const scrims = []; // On stocke les scrims ici maintenant !
+// --- CHEMINS DES FICHIERS DE SAUVEGARDE ---
+const USERS_FILE = 'users.json';
+const SCRIMS_FILE = 'scrims.json';
+
+// --- FONCTION POUR CHARGER LES DONNÉES DEPUIS UN FICHIER ---
+// Cette fonction lit un fichier et retourne son contenu parsé, ou un tableau vide en cas d'erreur (ex: le fichier n'existe pas encore)
+const loadData = (filePath) => {
+    try {
+        const data = fs.readFileSync(filePath, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        // Si le fichier n'existe pas, c'est normal au premier lancement. On retourne un tableau vide.
+        if (error.code === 'ENOENT') {
+            return [];
+        }
+        // Pour les autres erreurs, on les affiche.
+        console.error(`Erreur lors du chargement du fichier ${filePath}:`, error);
+        return [];
+    }
+};
+
+// --- BASES DE DONNÉES EN MÉMOIRE, INITIALISÉES AVEC LES DONNÉES DES FICHIERS ---
+let users = loadData(USERS_FILE);
+let scrims = loadData(SCRIMS_FILE);
+
+// --- FONCTIONS POUR SAUVEGARDER LES DONNÉES DANS LES FICHIERS ---
+const saveUsers = () => {
+    fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), (err) => {
+        if (err) console.error('Erreur lors de la sauvegarde des utilisateurs:', err);
+    });
+};
+
+const saveScrims = () => {
+    fs.writeFile(SCRIMS_FILE, JSON.stringify(scrims, null, 2), (err) => {
+        if (err) console.error('Erreur lors de la sauvegarde des scrims:', err);
+    });
+};
 
 // ===============================================
-//      ROUTES POUR LES UTILISATEURS (INCHANGÉ)
+//      ROUTES POUR LES UTILISATEURS
 // ===============================================
 app.post('/register', (req, res) => {
     const { username, password } = req.body;
@@ -26,6 +61,7 @@ app.post('/register', (req, res) => {
     }
     const newUser = { username, password };
     users.push(newUser);
+    saveUsers(); // On sauvegarde les utilisateurs après en avoir ajouté un nouveau
     res.status(201).json({ message: 'Compte créé avec succès ! Vous pouvez vous connecter.' });
 });
 
@@ -45,16 +81,13 @@ app.post('/login', (req, res) => {
 });
 
 // ===============================================
-//      NOUVELLES ROUTES POUR LES SCRIMS
+//      ROUTES POUR LES SCRIMS
 // ===============================================
 
-// Obtenir la liste de tous les scrims
 app.get('/scrims', (req, res) => {
-    // On peut ajouter une logique pour nettoyer les vieux scrims ici si besoin
     res.status(200).json(scrims);
 });
 
-// Créer un nouveau scrim
 app.post('/scrims', (req, res) => {
     const newScrim = {
         id: Date.now(),
@@ -64,13 +97,13 @@ app.post('/scrims', (req, res) => {
         gameId: req.body.gameId,
         avgRank: req.body.avgRank,
         startTime: req.body.startTime,
-        players: [req.body.creator] // Le créateur rejoint automatiquement
+        players: [req.body.creator]
     };
     scrims.push(newScrim);
+    saveScrims(); // On sauvegarde après chaque modification
     res.status(201).json(newScrim);
 });
 
-// Rejoindre un scrim
 app.post('/scrims/:id/join', (req, res) => {
     const scrim = scrims.find(s => s.id == req.params.id);
     const { username } = req.body;
@@ -86,10 +119,10 @@ app.post('/scrims/:id/join', (req, res) => {
     }
 
     scrim.players.push(username);
+    saveScrims(); // On sauvegarde après chaque modification
     res.status(200).json(scrim);
 });
 
-// Quitter ou supprimer un scrim
 app.post('/scrims/:id/leave', (req, res) => {
     const scrimId = parseInt(req.params.id, 10);
     const { username } = req.body;
@@ -101,17 +134,14 @@ app.post('/scrims/:id/leave', (req, res) => {
 
     const scrim = scrims[scrimIndex];
     if (scrim.creator === username) {
-        // Si le créateur quitte, le scrim est supprimé
         scrims.splice(scrimIndex, 1);
-        res.status(200).json({ message: 'Scrim supprimé.' });
     } else {
-        // Sinon, seul le joueur est retiré
         scrim.players = scrim.players.filter(p => p !== username);
-        res.status(200).json(scrim);
     }
+    saveScrims(); // On sauvegarde après chaque modification
+    res.status(200).json({ message: 'Action effectuée avec succès.' });
 });
 
-// Mettre à jour l'ID de la partie
 app.patch('/scrims/:id/gameid', (req, res) => {
     const scrim = scrims.find(s => s.id == req.params.id);
     const { gameId } = req.body;
@@ -121,9 +151,9 @@ app.patch('/scrims/:id/gameid', (req, res) => {
     }
     
     scrim.gameId = gameId;
+    saveScrims(); // On sauvegarde après chaque modification
     res.status(200).json(scrim);
 });
-
 
 app.listen(port, () => {
     console.log(`Serveur démarré sur http://localhost:${port}`);
