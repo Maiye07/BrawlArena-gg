@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const app = express();
 const port = 3000;
@@ -9,123 +9,147 @@ const port = 3000;
 app.use(cors());
 app.use(express.json());
 
-// --- CHEMINS DES FICHIERS DE SAUVEGARDE ---
-const USERS_FILE = 'users.json';
-const SCRIMS_FILE = 'scrims.json';
+// Récupération de la chaîne de connexion depuis les variables d'environnement
+const uri = process.env.MONGO_URI;
+if (!uri) {
+    throw new Error('La variable d\'environnement MONGO_URI est manquante.');
+}
 
-// --- FONCTION POUR CHARGER LES DONNÉES DEPUIS UN FICHIER ---
-const loadData = (filePath) => {
-    try {
-        const data = fs.readFileSync(filePath, 'utf8');
-        return JSON.parse(data);
-    } catch (error) {
-        if (error.code === 'ENOENT') return [];
-        console.error(`Erreur lors du chargement du fichier ${filePath}:`, error);
-        return [];
-    }
-};
+// Création du client MongoDB
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  }
+});
 
-// --- BASES DE DONNÉES, INITIALISÉES AVEC LES DONNÉES DES FICHIERS ---
-let users = loadData(USERS_FILE);
-let scrims = loadData(SCRIMS_FILE);
+let usersCollection;
+let scrimsCollection;
 
-// --- FONCTIONS POUR SAUVEGARDER LES DONNÉES ---
-const saveUsers = () => {
-    fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), (err) => {
-        if (err) console.error('Erreur lors de la sauvegarde des utilisateurs:', err);
+// Fonction pour se connecter à la base de données et démarrer le serveur
+async function run() {
+  try {
+    // Connexion au client
+    await client.connect();
+    console.log("Connecté avec succès à MongoDB Atlas !");
+    
+    // Sélection de la base de données et des collections
+    const database = client.db("brawlarenaDB"); // Vous pouvez nommer votre DB comme vous voulez
+    usersCollection = database.collection("users");
+    scrimsCollection = database.collection("scrims");
+    
+    // Démarrage du serveur Express une fois la connexion établie
+    app.listen(port, () => {
+        console.log(`Serveur Express démarré sur http://localhost:${port}`);
     });
-};
 
-const saveScrims = () => {
-    fs.writeFile(SCRIMS_FILE, JSON.stringify(scrims, null, 2), (err) => {
-        if (err) console.error('Erreur lors de la sauvegarde des scrims:', err);
-    });
-};
+  } catch (err) {
+    console.error("Échec de la connexion à MongoDB", err);
+    process.exit(1);
+  }
+}
+
+// Lancement de la fonction de connexion
+run();
+
 
 // ===============================================
-//      ROUTES POUR LES UTILISATEURS
+//      ROUTES (maintenant asynchrones)
 // ===============================================
-app.post('/register', (req, res) => {
+
+// --- Utilisateurs ---
+app.post('/register', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis.' });
     
-    const userExists = users.find(user => user.username.toLowerCase() === username.toLowerCase());
+    // Recherche insensible à la casse
+    const userExists = await usersCollection.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
     if (userExists) return res.status(409).json({ error: 'Ce nom d\'utilisateur est déjà pris.' });
 
-    const newUser = { username, password };
-    users.push(newUser);
-    saveUsers();
-    res.status(201).json({ message: 'Compte créé avec succès ! Vous pouvez vous connecter.' });
+    const result = await usersCollection.insertOne({ username, password });
+    res.status(201).json({ message: 'Compte créé avec succès !', userId: result.insertedId });
 });
 
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis.' });
 
-    const user = users.find(u => u.username === username && u.password === password);
+    const user = await usersCollection.findOne({ username, password });
     if (!user) return res.status(401).json({ error: 'Nom d\'utilisateur ou mot de passe incorrect.' });
 
     res.status(200).json({ message: 'Connexion réussie !', username: user.username });
 });
 
-app.get('/users', (req, res) => {
+app.get('/users', async (req, res) => {
     const { requestingUser } = req.query;
-
-    // La vérification a été rendue plus fiable
     if (!requestingUser || requestingUser.trim().toLowerCase() !== 'brawlarena.gg') {
         return res.status(403).json({ error: 'Accès réservé à l\'administrateur.' });
     }
-
-    const sanitizedUsers = users.map(user => ({ username: user.username }));
-    res.status(200).json(sanitizedUsers);
+    // Projette uniquement le champ 'username' et exclut '_id'
+    const users = await usersCollection.find({}, { projection: { username: 1, _id: 0 } }).toArray();
+    res.status(200).json(users);
 });
 
-// ===============================================
-//      ROUTES POUR LES SCRIMS
-// ===============================================
-// ... (Les routes pour les scrims restent inchangées)
-app.get('/scrims', (req, res) => {
-    res.status(200).json(scrims);
+
+// --- Scrims ---
+app.get('/scrims', async (req, res) => {
+    const allScrims = await scrimsCollection.find({}).sort({ eventDate: 1, startTime: 1 }).toArray();
+    res.status(200).json(allScrims);
 });
 
-app.post('/scrims', (req, res) => {
-    const newScrim = { id: Date.now(), ...req.body, players: [req.body.creator] };
-    scrims.push(newScrim);
-    saveScrims();
-    res.status(201).json(newScrim);
+app.post('/scrims', async (req, res) => {
+    const scrimData = { ...req.body, players: [req.body.creator] };
+    const result = await scrimsCollection.insertOne(scrimData);
+    res.status(201).json({ ...scrimData, _id: result.insertedId });
 });
 
-app.post('/scrims/:id/join', (req, res) => {
-    const scrim = scrims.find(s => s.id == req.params.id);
-    if (!scrim) return res.status(404).json({ error: 'Scrim non trouvé.' });
-    if (scrim.players.length >= 6) return res.status(400).json({ error: 'Le scrim est déjà plein.' });
-    if (scrim.players.includes(req.body.username)) return res.status(400).json({ error: 'Vous êtes déjà dans ce scrim.' });
-    scrim.players.push(req.body.username);
-    saveScrims();
-    res.status(200).json(scrim);
-});
+app.post('/scrims/:id/join', async (req, res) => {
+    try {
+        const scrimId = new ObjectId(req.params.id);
+        const { username } = req.body;
+        
+        const scrim = await scrimsCollection.findOne({ _id: scrimId });
+        if (!scrim) return res.status(404).json({ error: 'Scrim non trouvé.' });
+        if (scrim.players.length >= 6) return res.status(400).json({ error: 'Le scrim est déjà plein.' });
+        if (scrim.players.includes(username)) return res.status(400).json({ error: 'Vous êtes déjà dans ce scrim.' });
 
-app.post('/scrims/:id/leave', (req, res) => {
-    const scrimId = parseInt(req.params.id, 10);
-    const scrimIndex = scrims.findIndex(s => s.id === scrimId);
-    if (scrimIndex === -1) return res.status(404).json({ error: 'Scrim non trouvé.' });
-    if (scrims[scrimIndex].creator === req.body.username) {
-        scrims.splice(scrimIndex, 1);
-    } else {
-        scrims[scrimIndex].players = scrims[scrimIndex].players.filter(p => p !== req.body.username);
+        await scrimsCollection.updateOne({ _id: scrimId }, { $push: { players: username } });
+        res.status(200).json({ message: 'Rejoint avec succès' });
+    } catch (error) {
+        res.status(400).json({ error: 'ID de scrim invalide' });
     }
-    saveScrims();
-    res.status(200).json({ message: 'Action effectuée avec succès.' });
 });
 
-app.patch('/scrims/:id/gameid', (req, res) => {
-    const scrim = scrims.find(s => s.id == req.params.id);
-    if (!scrim) return res.status(404).json({ error: 'Scrim non trouvé.' });
-    scrim.gameId = req.body.gameId;
-    saveScrims();
-    res.status(200).json(scrim);
+app.post('/scrims/:id/leave', async (req, res) => {
+    try {
+        const scrimId = new ObjectId(req.params.id);
+        const { username } = req.body;
+
+        const scrim = await scrimsCollection.findOne({ _id: scrimId });
+        if (!scrim) return res.status(404).json({ error: 'Scrim non trouvé.' });
+
+        if (scrim.creator === username) {
+            await scrimsCollection.deleteOne({ _id: scrimId });
+        } else {
+            await scrimsCollection.updateOne({ _id: scrimId }, { $pull: { players: username } });
+        }
+        res.status(200).json({ message: 'Action effectuée avec succès.' });
+    } catch (error) {
+        res.status(400).json({ error: 'ID de scrim invalide' });
+    }
 });
 
-app.listen(port, () => {
-    console.log(`Serveur démarré sur http://localhost:${port}`);
+app.patch('/scrims/:id/gameid', async (req, res) => {
+    try {
+        const scrimId = new ObjectId(req.params.id);
+        const { gameId } = req.body;
+
+        const result = await scrimsCollection.updateOne({ _id: scrimId }, { $set: { gameId: gameId } });
+        if (result.matchedCount === 0) return res.status(404).json({ error: 'Scrim non trouvé.' });
+        
+        res.status(200).json({ message: 'ID mis à jour' });
+    } catch (error) {
+        res.status(400).json({ error: 'ID de scrim invalide' });
+    }
 });
