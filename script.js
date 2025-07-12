@@ -11,6 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const showAuthButton = document.getElementById('show-auth-button');
     const messageDisplay = document.getElementById('message');
 
+    // URL du serveur backend
+    const API_URL = 'https://brawlarena-gg.onrender.com'; // Ou 'http://localhost:3000' en local
+
     function showMessage(msg, type) {
         messageDisplay.textContent = msg;
         messageDisplay.className = type;
@@ -23,92 +26,71 @@ document.addEventListener('DOMContentLoaded', () => {
         authContainer.style.display = 'block';
         loginSection.style.display = 'block';
         registerSection.style.display = 'none';
+        messageDisplay.textContent = '';
     });
 
     showLoginLink.addEventListener('click', (e) => {
         e.preventDefault();
         registerSection.style.display = 'none';
         loginSection.style.display = 'block';
+        messageDisplay.textContent = '';
     });
 
     showRegisterLink.addEventListener('click', (e) => {
         e.preventDefault();
         loginSection.style.display = 'none';
         registerSection.style.display = 'block';
+        messageDisplay.textContent = '';
     });
     
-    // --- Logique d'inscription (communique avec le serveur) ---
+    // --- Logique d'inscription ---
     registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const username = document.getElementById('register-username').value;
         const password = document.getElementById('register-password').value;
-        const playerTag = document.getElementById('register-player-tag').value;
 
-        if (!playerTag.startsWith('#')) {
-            showMessage('Le tag du joueur doit commencer par #.', 'error');
-            return;
-        }
-
-        showMessage('Vérification du tag Brawl Stars...', 'success');
+        showMessage('Création du compte en cours...', 'success');
         try {
-            // On vérifie le tag auprès du serveur
-            const response = await fetch('https://brawlarena-gg.onrender.com/verify-player', {
+            const response = await fetch(`${API_URL}/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ playerTag }),
+                body: JSON.stringify({ username, password }),
             });
             const data = await response.json();
+
             if (!response.ok) {
-                showMessage(`Erreur : ${data.error || 'Tag joueur non valide.'}`, 'error');
-                return;
+                showMessage(data.error || 'Une erreur est survenue.', 'error');
+            } else {
+                showMessage(data.message, 'success');
+                registerForm.reset();
             }
-            
-            // Si le tag est bon, on sauvegarde en local
-            let users = JSON.parse(localStorage.getItem('users')) || [];
-            if (users.find(user => user.username === username)) {
-                showMessage("Ce nom d'utilisateur est déjà pris.", 'error');
-                return;
-            }
-            users.push({
-                username,
-                password,
-                playerTag: data.tag,
-                inGameName: data.name
-            });
-            localStorage.setItem('users', JSON.stringify(users));
-            showMessage(`Compte créé pour ${data.name} ! Vous pouvez vous connecter.`, 'success');
-            
         } catch (error) {
             showMessage('Erreur de communication avec le serveur.', 'error');
         }
     });
 
-    // --- Logique de connexion (communique avec le serveur) ---
+    // --- Logique de connexion ---
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const playerTag = document.getElementById('login-player-tag').value;
-
-        if (!playerTag.startsWith('#')) {
-            showMessage('Le tag du joueur doit commencer par #.', 'error');
-            return;
-        }
+        const username = document.getElementById('login-username').value;
+        const password = document.getElementById('login-password').value;
         
         showMessage('Vérification en cours...', 'success');
         try {
-            // On appelle le serveur pour la connexion
-            const response = await fetch('https://brawlarena-gg.onrender.com/login', {
+            const response = await fetch(`${API_URL}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ playerTag }),
+                body: JSON.stringify({ username, password }),
             });
             const data = await response.json();
+
             if (!response.ok) {
                 showMessage(data.error, 'error');
                 return;
             }
 
             // Si le serveur confirme, on connecte l'utilisateur
-            localStorage.setItem('loggedInUsername', data.player.name);
+            localStorage.setItem('loggedInUsername', data.username);
             window.location.href = 'dashboard.html';
 
         } catch (error) {

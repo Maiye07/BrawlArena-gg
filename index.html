@@ -27,9 +27,6 @@
                 <label for="register-username">Nom d'utilisateur :</label>
                 <input type="text" id="register-username" required>
 
-                <label for="register-player-tag">Tag Joueur Brawl Stars :</label>
-                <input type="text" id="register-player-tag" placeholder="#LPUJCQ" required>
-
                 <label for="register-password">Mot de passe :</label>
                 <input type="password" id="register-password" required>
 
@@ -40,10 +37,13 @@
 
         <div id="login-section" style="display:none;">
             <h2>Connexion</h2>
-            <p>Entrez votre Tag joueur Brawl Stars pour vous connecter.</p>
             <form id="login-form">
-                <label for="login-player-tag">Tag Joueur Brawl Stars :</label>
-                <input type="text" id="login-player-tag" placeholder="#LPUJCQ" required>
+                <label for="login-username">Nom d'utilisateur :</label>
+                <input type="text" id="login-username" required>
+                
+                <label for="login-password">Mot de passe :</label>
+                <input type="password" id="login-password" required>
+
                 <button type="submit">Se connecter</button>
             </form>
             <p>Pas encore de compte ? <a href="#" id="show-register">Inscrivez-vous</a></p>
