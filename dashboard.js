@@ -1,13 +1,15 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Vérifie si un utilisateur est connecté
     const loggedInUsername = localStorage.getItem('loggedInUsername');
     if (!loggedInUsername) {
         window.location.href = 'index.html';
         return;
     }
 
+    // Configuration de l'API
     const API_URL = 'https://brawlarena-gg.onrender.com';
 
-    // Stockage local du statut premium de l'utilisateur connecté pour un affichage rapide
+    // Statut premium de l'utilisateur actuel, stocké pour un accès rapide
     let isCurrentUserPremium = localStorage.getItem('isPremium') === 'true';
 
     // --- SÉLECTION DES ÉLÉMENTS DU DOM ---
@@ -61,28 +63,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function renderScrims() {
         try {
-            const response = await fetch(`${API_URL}/scrims`);
-            if (!response.ok) throw new Error('La récupération des scrims a échoué.');
-            
-            let scrims = await response.json();
+            // Étape 1 : Récupérer les scrims
+            const scrimsResponse = await fetch(`${API_URL}/scrims`);
+            if (!scrimsResponse.ok) throw new Error('La récupération des scrims a échoué.');
+            let scrims = await scrimsResponse.json();
 
-            const sortMethod = sortScrimsSelect.value;
-            if (sortMethod === 'time-asc') scrims.sort((a, b) => `${a.eventDate}T${a.startTime}`.localeCompare(`${b.eventDate}T${b.startTime}`));
-            else if (sortMethod === 'rank-asc') scrims.sort((a, b) => rankOrder.indexOf(a.avgRank) - rankOrder.indexOf(b.avgRank));
-            else if (sortMethod === 'rank-desc') scrims.sort((a, b) => rankOrder.indexOf(b.avgRank) - rankOrder.indexOf(a.avgRank));
-
-            scrimsListContainer.innerHTML = '';
             if (scrims.length === 0) {
                 scrimsListContainer.innerHTML = '<p>Aucun scrim en cours. Soyez le premier à en créer un !</p>';
                 return;
             }
 
+            // Étape 2 : Collecter les noms de joueurs uniques
+            const allUsernames = new Set();
+            scrims.forEach(scrim => {
+                scrim.players.forEach(player => allUsernames.add(player));
+            });
+
+            // Étape 3 : Demander les statuts premium pour ces joueurs
+            const statusesResponse = await fetch(`${API_URL}/users/statuses`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ usernames: Array.from(allUsernames) })
+            });
+            const premiumStatus = await statusesResponse.json();
+            
+            // Logique de tri
+            const sortMethod = sortScrimsSelect.value;
+            if (sortMethod === 'time-asc') scrims.sort((a, b) => `${a.eventDate}T${a.startTime}`.localeCompare(`${b.eventDate}T${b.startTime}`));
+            else if (sortMethod === 'rank-asc') scrims.sort((a, b) => rankOrder.indexOf(a.avgRank) - rankOrder.indexOf(b.avgRank));
+            else if (sortMethod === 'rank-desc') scrims.sort((a, b) => rankOrder.indexOf(b.avgRank) - rankOrder.indexOf(a.avgRank));
+
+            // Étape 4 : Affichage
+            scrimsListContainer.innerHTML = '';
             scrims.forEach(scrim => {
                 const card = document.createElement('div');
                 card.className = 'scrim-card';
 
                 const playersHTML = scrim.players.map(player => {
-                    const isPlayerPremium = scrim.premiumStatus[player] || false;
+                    const isPlayerPremium = premiumStatus[player] || false;
                     const isPlayerCreator = player === scrim.creator;
                     const badges = isPlayerCreator ? `<img src="images/crown.png" alt="Créateur" class="creator-crown">` : '';
                     const playerNameHTML = `<span class="${isPlayerPremium ? 'premium-username' : ''}">${player}</span>`;
@@ -92,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isUserInScrim = scrim.players.includes(loggedInUsername);
                 const isCreator = loggedInUsername === scrim.creator;
                 const isFull = scrim.players.length >= 6;
-                let actionButtonHTML = isUserInScrim ? `<button class="button leave-button" data-scrim-id="${scrim._id}">Quitter</button>` : (!isFull ? `<button class="button join-button" data-scrim-id="${scrim._id}">Rejoindre</button>` : `<button class="button" disabled>Plein</button>`);
+                const actionButtonHTML = isUserInScrim ? `<button class="button leave-button" data-scrim-id="${scrim._id}">Quitter</button>` : (!isFull ? `<button class="button join-button" data-scrim-id="${scrim._id}">Rejoindre</button>` : `<button class="button" disabled>Plein</button>`);
                 
                 let gameIdHTML = '';
                 const currentIdText = scrim.gameId || 'Non défini';
@@ -107,17 +125,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const scrimDate = new Date(`${scrim.eventDate}T00:00:00Z`);
                 const today = new Date(); today.setUTCHours(0, 0, 0, 0);
                 const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-                let dateLabel = scrimDate.getTime() === today.getTime() ? "Aujourd'hui" : scrimDate.getTime() === tomorrow.getTime() ? "Demain" : scrimDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+                const dateLabel = scrimDate.getTime() === today.getTime() ? "Aujourd'hui" : scrimDate.getTime() === tomorrow.getTime() ? "Demain" : scrimDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
                 card.innerHTML = `
-                    <h3>${scrim.roomName}</h3>
-                    ${gameIdHTML}
+                    <h3>${scrim.roomName}</h3> ${gameIdHTML}
                     <p><strong>Rang Moyen :</strong> ${scrim.avgRank}</p>
                     <p><strong>Début (UTC) :</strong> ${dateLabel} à ${scrim.startTime}</p>
-                    <div class="players-list">
-                        <strong>Joueurs (${scrim.players.length}/6) :</strong>
-                        <ul>${playersHTML}</ul>
-                    </div>
+                    <div class="players-list"><strong>Joueurs (${scrim.players.length}/6) :</strong><ul>${playersHTML}</ul></div>
                     <div class="scrim-actions">${actionButtonHTML}</div>
                 `;
                 scrimsListContainer.appendChild(card);
@@ -149,12 +163,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const today = new Date().toISOString().split('T')[0];
         if (!userStats[loggedInUsername]) {
             userStats[loggedInUsername] = { tournamentsAttended: 0, scrimsAttended: 0, tournamentsWon: 0, lastParticipationDate: today, dailyTournaments: 0, dailyScrims: 0 };
-        } else {
-            if (userStats[loggedInUsername].lastParticipationDate !== today) {
-                userStats[loggedInUsername].dailyTournaments = 0;
-                userStats[loggedInUsername].dailyScrims = 0;
-                userStats[loggedInUsername].lastParticipationDate = today;
-            }
+        } else if (userStats[loggedInUsername].lastParticipationDate !== today) {
+            userStats[loggedInUsername].dailyTournaments = 0;
+            userStats[loggedInUsername].dailyScrims = 0;
+            userStats[loggedInUsername].lastParticipationDate = today;
         }
         localStorage.setItem('userStats', JSON.stringify(userStats));
     }
@@ -294,7 +306,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             if (response && !response.ok) {
-                throw new Error((await response.json()).error);
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Une erreur inconnue est survenue.");
             }
             await renderScrims();
         } catch (error) {
