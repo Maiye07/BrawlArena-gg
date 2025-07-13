@@ -98,6 +98,11 @@ document.addEventListener('DOMContentLoaded', () => {
             scrims.forEach(scrim => {
                 const card = document.createElement('div');
                 card.className = 'scrim-card';
+                
+                let adminDeleteIcon = '';
+                if (loggedInUsername.toLowerCase() === 'brawlarena.gg') {
+                    adminDeleteIcon = `<span class="admin-delete-scrim" data-scrim-id="${scrim._id}" title="Supprimer le scrim">🗑️</span>`;
+                }
 
                 const playersHTML = scrim.players.map(player => {
                     const isPlayerPremium = premiumStatus[player] || false;
@@ -128,6 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dateLabel = scrimDate.getTime() === today.getTime() ? "Aujourd'hui" : scrimDate.getTime() === tomorrow.getTime() ? "Demain" : scrimDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
                 card.innerHTML = `
+                    ${adminDeleteIcon}
                     <h3>${scrim.roomName}</h3> ${gameIdHTML}
                     <p><strong>Rang Moyen :</strong> ${scrim.avgRank}</p>
                     <p><strong>Début (UTC) :</strong> ${dateLabel} à ${scrim.startTime}</p>
@@ -278,6 +284,28 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     scrimsListContainer.addEventListener('click', async (e) => {
+        // Clic sur l'icône de suppression par l'admin
+        const deleteIcon = e.target.closest('.admin-delete-scrim');
+        if (deleteIcon) {
+            const scrimId = deleteIcon.dataset.scrimId;
+            if (confirm('Êtes-vous sûr de vouloir supprimer définitivement ce scrim ?')) {
+                try {
+                    const response = await fetch(`${API_URL}/scrims/${scrimId}?requestingUser=${encodeURIComponent(loggedInUsername)}`, {
+                        method: 'DELETE'
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error);
+                    }
+                    await renderScrims();
+                } catch (error) {
+                    alert(`Erreur: ${error.message}`);
+                }
+            }
+            return;
+        }
+
+        // Clic sur les autres boutons
         const button = e.target.closest('button');
         if (!button) return;
 

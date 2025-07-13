@@ -41,11 +41,10 @@ async function run() {
 
 run();
 
+// ... Les routes pour les utilisateurs (/register, /login, etc.) sont inchangées ...
 // ===============================================
 //      ROUTES UTILISATEURS
 // ===============================================
-
-// ... (les routes /register, /login, et /users restent INCHANGÉES)
 app.post('/register', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis.' });
@@ -78,30 +77,14 @@ app.post('/premium/toggle', async (req, res) => {
     await usersCollection.updateOne({ username }, { $set: { isPremium: newPremiumStatus } });
     res.status(200).json({ username, isPremium: newPremiumStatus });
 });
-
-
-// NOUVELLE ROUTE POUR OBTENIR LES STATUTS PREMIUM DE PLUSIEURS JOUEURS
 app.post('/users/statuses', async (req, res) => {
     try {
         const { usernames } = req.body;
-        if (!usernames || !Array.isArray(usernames)) {
-            return res.status(400).json({ error: "Un tableau de noms d'utilisateurs est requis." });
-        }
-        
-        const users = await usersCollection.find(
-            { username: { $in: usernames } },
-            { projection: { username: 1, isPremium: 1, _id: 0 } }
-        ).toArray();
-        
-        const statusMap = users.reduce((acc, user) => {
-            acc[user.username] = user.isPremium;
-            return acc;
-        }, {});
-        
+        if (!usernames || !Array.isArray(usernames)) return res.status(400).json({ error: "Un tableau de noms d'utilisateurs est requis." });
+        const users = await usersCollection.find({ username: { $in: usernames } }, { projection: { username: 1, isPremium: 1, _id: 0 } }).toArray();
+        const statusMap = users.reduce((acc, user) => { acc[user.username] = user.isPremium; return acc; }, {});
         res.status(200).json(statusMap);
-    } catch (error) {
-        res.status(500).json({ error: "Erreur lors de la récupération des statuts." });
-    }
+    } catch (error) { res.status(500).json({ error: "Erreur lors de la récupération des statuts." }); }
 });
 
 
@@ -109,19 +92,46 @@ app.post('/users/statuses', async (req, res) => {
 //      ROUTES SCRIMS
 // ===============================================
 
-// ROUTE SIMPLIFIÉE : on ne fait plus la jointure complexe
+// ... (la route GET /scrims est inchangée)
 app.get('/scrims', async (req, res) => {
     try {
         const allScrims = await scrimsCollection.find({}).sort({ eventDate: 1, startTime: 1 }).toArray();
         res.status(200).json(allScrims);
     } catch (error) {
-        // Ajout d'un log pour voir l'erreur côté serveur si elle se produit
         console.error("Erreur dans GET /scrims:", error);
         res.status(500).json({ error: "Erreur lors de la récupération des scrims" });
     }
 });
 
-// ... (les autres routes de scrims /post, /join, /leave, /gameid sont INCHANGÉES)
+
+// NOUVELLE ROUTE : Suppression d'un scrim par l'administrateur
+app.delete('/scrims/:id', async (req, res) => {
+    const { requestingUser } = req.query;
+
+    // Étape 1 : Vérifier si l'utilisateur est bien l'administrateur
+    if (!requestingUser || requestingUser.trim().toLowerCase() !== 'brawlarena.gg') {
+        return res.status(403).json({ error: 'Action non autorisée.' });
+    }
+
+    try {
+        const scrimId = new ObjectId(req.params.id);
+        
+        // Étape 2 : Supprimer le scrim
+        const result = await scrimsCollection.deleteOne({ _id: scrimId });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ error: 'Scrim non trouvé.' });
+        }
+
+        res.status(200).json({ message: 'Scrim supprimé avec succès.' });
+
+    } catch (error) {
+        res.status(400).json({ error: 'ID de scrim invalide' });
+    }
+});
+
+
+// ... (les autres routes /post, /join, etc. sont inchangées)
 app.post('/scrims', async (req, res) => {
     const scrimData = { ...req.body, players: [req.body.creator] };
     const result = await scrimsCollection.insertOne(scrimData);

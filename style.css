@@ -366,6 +366,7 @@ a:hover {
     padding: 20px;
     display: flex;
     flex-direction: column;
+    position: relative; /* Nécessaire pour positionner l'icône poubelle */
 }
 
 .scrim-card h3 {
@@ -521,4 +522,17 @@ a:hover {
     100% {
         background-position: 200% 50%;
     }
+}
+
+.admin-delete-scrim {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-size: 1.5em;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.admin-delete-scrim:hover {
+    transform: scale(1.2);
 }
