@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Vérifie si un utilisateur est connecté
+    // Vérifie si un utilisateur est connecté, sinon redirige vers la page d'accueil
     const loggedInUsername = localStorage.getItem('loggedInUsername');
     if (!loggedInUsername) {
         window.location.href = 'index.html';
@@ -9,8 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Configuration de l'API
     const API_URL = 'https://brawlarena-gg.onrender.com';
 
-    // Statut premium de l'utilisateur actuel, stocké pour un accès rapide
+    // Statut premium et stats journalières de l'utilisateur, stockés localement après la connexion
     let isCurrentUserPremium = localStorage.getItem('isPremium') === 'true';
+    let userDailyStats = JSON.parse(localStorage.getItem('userDailyStats')) || { dailyScrims: 0 };
 
     // --- SÉLECTION DES ÉLÉMENTS DU DOM ---
     const utcClockElement = document.getElementById('utc-clock');
@@ -63,85 +64,77 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function renderScrims() {
         try {
-            // Étape 1 : Récupérer les scrims
             const scrimsResponse = await fetch(`${API_URL}/scrims`);
             if (!scrimsResponse.ok) throw new Error('La récupération des scrims a échoué.');
             let scrims = await scrimsResponse.json();
 
-            if (scrims.length === 0) {
+            if (scrims.length > 0) {
+                const allUsernames = new Set();
+                scrims.forEach(scrim => scrim.players.forEach(player => allUsernames.add(player)));
+
+                const statusesResponse = await fetch(`${API_URL}/users/statuses`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usernames: Array.from(allUsernames) })
+                });
+                const premiumStatus = await statusesResponse.json();
+
+                const sortMethod = sortScrimsSelect.value;
+                if (sortMethod === 'time-asc') scrims.sort((a, b) => `${a.eventDate}T${a.startTime}`.localeCompare(`${b.eventDate}T${b.startTime}`));
+                else if (sortMethod === 'rank-asc') scrims.sort((a, b) => rankOrder.indexOf(a.avgRank) - rankOrder.indexOf(b.avgRank));
+                else if (sortMethod === 'rank-desc') scrims.sort((a, b) => rankOrder.indexOf(b.avgRank) - rankOrder.indexOf(a.avgRank));
+
+                scrimsListContainer.innerHTML = '';
+                scrims.forEach(scrim => {
+                    const card = document.createElement('div');
+                    card.className = 'scrim-card';
+
+                    let adminDeleteIcon = '';
+                    if (loggedInUsername.toLowerCase() === 'brawlarena.gg') {
+                        adminDeleteIcon = `<span class="admin-delete-scrim" data-scrim-id="${scrim._id}" title="Supprimer le scrim">🗑️</span>`;
+                    }
+
+                    const playersHTML = scrim.players.map(player => {
+                        const isPlayerPremium = premiumStatus[player] || false;
+                        const isPlayerCreator = player === scrim.creator;
+                        const badges = isPlayerCreator ? `<img src="images/crown.png" alt="Créateur" class="creator-crown">` : '';
+                        const playerNameHTML = `<span class="${isPlayerPremium ? 'premium-username' : ''}">${player}</span>`;
+                        return `<li>${playerNameHTML} ${badges}</li>`;
+                    }).join('');
+
+                    const isUserInScrim = scrim.players.includes(loggedInUsername);
+                    const isCreator = loggedInUsername === scrim.creator;
+                    const isFull = scrim.players.length >= 6;
+                    const actionButtonHTML = isUserInScrim ? `<button class="button leave-button" data-scrim-id="${scrim._id}">Quitter</button>` : (!isFull ? `<button class="button join-button" data-scrim-id="${scrim._id}">Rejoindre</button>` : `<button class="button" disabled>Plein</button>`);
+                    
+                    let gameIdHTML = '';
+                    const currentIdText = scrim.gameId || 'Non défini';
+                    if (isUserInScrim) {
+                        gameIdHTML = isCreator
+                            ? `<p><strong>ID Partie :</strong> <span class="game-id-container" data-scrim-id="${scrim._id}"><span class="game-id-text">${currentIdText}</span><button class="edit-id-button"><img src="images/edit.png" alt="Modifier"></button></span></p>`
+                            : `<p><strong>ID Partie :</strong> ${currentIdText}</p>`;
+                    } else {
+                        gameIdHTML = `<p><strong>ID Partie :</strong> Rejoignez pour voir</p>`;
+                    }
+
+                    const scrimDate = new Date(`${scrim.eventDate}T00:00:00Z`);
+                    const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+                    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+                    const dateLabel = scrimDate.getTime() === today.getTime() ? "Aujourd'hui" : scrimDate.getTime() === tomorrow.getTime() ? "Demain" : scrimDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+                    card.innerHTML = `
+                        ${adminDeleteIcon}
+                        <h3>${scrim.roomName}</h3> ${gameIdHTML}
+                        <p><strong>Rang Moyen :</strong> ${scrim.avgRank}</p>
+                        <p><strong>Début (UTC) :</strong> ${dateLabel} à ${scrim.startTime}</p>
+                        <div class="players-list"><strong>Joueurs (${scrim.players.length}/6) :</strong><ul>${playersHTML}</ul></div>
+                        <div class="scrim-actions">${actionButtonHTML}</div>
+                    `;
+                    scrimsListContainer.appendChild(card);
+                });
+            } else {
                 scrimsListContainer.innerHTML = '<p>Aucun scrim en cours. Soyez le premier à en créer un !</p>';
-                return;
             }
-
-            // Étape 2 : Collecter les noms de joueurs uniques
-            const allUsernames = new Set();
-            scrims.forEach(scrim => {
-                scrim.players.forEach(player => allUsernames.add(player));
-            });
-
-            // Étape 3 : Demander les statuts premium pour ces joueurs
-            const statusesResponse = await fetch(`${API_URL}/users/statuses`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ usernames: Array.from(allUsernames) })
-            });
-            const premiumStatus = await statusesResponse.json();
-            
-            // Logique de tri
-            const sortMethod = sortScrimsSelect.value;
-            if (sortMethod === 'time-asc') scrims.sort((a, b) => `${a.eventDate}T${a.startTime}`.localeCompare(`${b.eventDate}T${b.startTime}`));
-            else if (sortMethod === 'rank-asc') scrims.sort((a, b) => rankOrder.indexOf(a.avgRank) - rankOrder.indexOf(b.avgRank));
-            else if (sortMethod === 'rank-desc') scrims.sort((a, b) => rankOrder.indexOf(b.avgRank) - rankOrder.indexOf(a.avgRank));
-
-            // Étape 4 : Affichage
-            scrimsListContainer.innerHTML = '';
-            scrims.forEach(scrim => {
-                const card = document.createElement('div');
-                card.className = 'scrim-card';
-                
-                let adminDeleteIcon = '';
-                if (loggedInUsername.toLowerCase() === 'brawlarena.gg') {
-                    adminDeleteIcon = `<span class="admin-delete-scrim" data-scrim-id="${scrim._id}" title="Supprimer le scrim">🗑️</span>`;
-                }
-
-                const playersHTML = scrim.players.map(player => {
-                    const isPlayerPremium = premiumStatus[player] || false;
-                    const isPlayerCreator = player === scrim.creator;
-                    const badges = isPlayerCreator ? `<img src="images/crown.png" alt="Créateur" class="creator-crown">` : '';
-                    const playerNameHTML = `<span class="${isPlayerPremium ? 'premium-username' : ''}">${player}</span>`;
-                    return `<li>${playerNameHTML} ${badges}</li>`;
-                }).join('');
-
-                const isUserInScrim = scrim.players.includes(loggedInUsername);
-                const isCreator = loggedInUsername === scrim.creator;
-                const isFull = scrim.players.length >= 6;
-                const actionButtonHTML = isUserInScrim ? `<button class="button leave-button" data-scrim-id="${scrim._id}">Quitter</button>` : (!isFull ? `<button class="button join-button" data-scrim-id="${scrim._id}">Rejoindre</button>` : `<button class="button" disabled>Plein</button>`);
-                
-                let gameIdHTML = '';
-                const currentIdText = scrim.gameId || 'Non défini';
-                if (isUserInScrim) {
-                    gameIdHTML = isCreator
-                        ? `<p><strong>ID Partie :</strong> <span class="game-id-container" data-scrim-id="${scrim._id}"><span class="game-id-text">${currentIdText}</span><button class="edit-id-button"><img src="images/edit.png" alt="Modifier"></button></span></p>`
-                        : `<p><strong>ID Partie :</strong> ${currentIdText}</p>`;
-                } else {
-                    gameIdHTML = `<p><strong>ID Partie :</strong> Rejoignez pour voir</p>`;
-                }
-
-                const scrimDate = new Date(`${scrim.eventDate}T00:00:00Z`);
-                const today = new Date(); today.setUTCHours(0, 0, 0, 0);
-                const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-                const dateLabel = scrimDate.getTime() === today.getTime() ? "Aujourd'hui" : scrimDate.getTime() === tomorrow.getTime() ? "Demain" : scrimDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-
-                card.innerHTML = `
-                    ${adminDeleteIcon}
-                    <h3>${scrim.roomName}</h3> ${gameIdHTML}
-                    <p><strong>Rang Moyen :</strong> ${scrim.avgRank}</p>
-                    <p><strong>Début (UTC) :</strong> ${dateLabel} à ${scrim.startTime}</p>
-                    <div class="players-list"><strong>Joueurs (${scrim.players.length}/6) :</strong><ul>${playersHTML}</ul></div>
-                    <div class="scrim-actions">${actionButtonHTML}</div>
-                `;
-                scrimsListContainer.appendChild(card);
-            });
         } catch (error) {
             scrimsListContainer.innerHTML = `<p class="error">Erreur de chargement des scrims : ${error.message}</p>`;
         }
@@ -153,28 +146,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function updateProfileView() {
-        const userStats = JSON.parse(localStorage.getItem('userStats'))[loggedInUsername];
-        const usersPlayerIDs = JSON.parse(localStorage.getItem('usersPlayerIDs')) || {};
-        profileUsername.textContent = loggedInUsername;
-        profilePlayerId.textContent = usersPlayerIDs[loggedInUsername] || "Non défini";
-        profileTournamentsAttended.textContent = userStats.tournamentsAttended;
-        profileScrimsAttended.textContent = userStats.scrimsAttended;
-        profileTournamentsWon.textContent = userStats.tournamentsWon;
-        profileDailyTournaments.textContent = isCurrentUserPremium ? 'Illimité ✨' : Math.max(0, 1 - userStats.dailyTournaments);
-        profileDailyScrims.textContent = isCurrentUserPremium ? 'Illimité ✨' : Math.max(0, 2 - userStats.dailyScrims);
-    }
-
-    function initializeUserStats() {
-        let userStats = JSON.parse(localStorage.getItem('userStats')) || {};
         const today = new Date().toISOString().split('T')[0];
-        if (!userStats[loggedInUsername]) {
-            userStats[loggedInUsername] = { tournamentsAttended: 0, scrimsAttended: 0, tournamentsWon: 0, lastParticipationDate: today, dailyTournaments: 0, dailyScrims: 0 };
-        } else if (userStats[loggedInUsername].lastParticipationDate !== today) {
-            userStats[loggedInUsername].dailyTournaments = 0;
-            userStats[loggedInUsername].dailyScrims = 0;
-            userStats[loggedInUsername].lastParticipationDate = today;
+        if (userDailyStats.lastActivityDate !== today) {
+            userDailyStats.dailyScrims = 0;
         }
-        localStorage.setItem('userStats', JSON.stringify(userStats));
+        
+        profileUsername.textContent = loggedInUsername;
+        // La partie tournois n'est pas implémentée côté serveur, on la met en non disponible
+        profileDailyTournaments.textContent = 'N/A'; 
+        profileDailyScrims.textContent = isCurrentUserPremium ? 'Illimité ✨' : Math.max(0, 2 - userDailyStats.dailyScrims);
     }
 
     function updateUtcClock() {
@@ -207,6 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
     logoutButton.addEventListener('click', () => {
         localStorage.removeItem('loggedInUsername');
         localStorage.removeItem('isPremium');
+        localStorage.removeItem('userDailyStats');
         window.location.href = 'index.html';
     });
     
@@ -224,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('isPremium', isCurrentUserPremium);
             
             updatePremiumDisplay();
-            if (sections.profile.style.display === 'block') updateProfileView();
+            updateProfileView();
             if (sections.scrims.style.display === 'block') await renderScrims();
 
             alert(`Statut Premium ${isCurrentUserPremium ? 'activé' : 'désactivé'} !`);
@@ -257,6 +238,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     sortScrimsSelect.addEventListener('change', renderScrims);
 
+    showScrimModalButton.addEventListener('click', () => {
+        updateProfileView();
+        
+        if (!isCurrentUserPremium && userDailyStats.dailyScrims >= 2) {
+            alert("Vous avez atteint votre limite de création de 2 scrims pour aujourd'hui.");
+            return;
+        }
+        createScrimModal.style.display = 'flex';
+    });
+    
     createScrimForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const scrimData = {
@@ -269,11 +260,14 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         try {
             const response = await fetch(`${API_URL}/scrims`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(scrimData) });
-            if (!response.ok) throw new Error((await response.json()).error || "Erreur de création");
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Erreur de création");
             
-            let userStats = JSON.parse(localStorage.getItem('userStats'));
-            if (!isCurrentUserPremium) userStats[loggedInUsername].dailyScrims++;
-            localStorage.setItem('userStats', JSON.stringify(userStats));
+            if (!isCurrentUserPremium) {
+                userDailyStats.dailyScrims++;
+                userDailyStats.lastActivityDate = new Date().toISOString().split('T')[0];
+                localStorage.setItem('userDailyStats', JSON.stringify(userDailyStats));
+            }
             
             createScrimForm.reset();
             createScrimModal.style.display = 'none';
@@ -284,7 +278,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     scrimsListContainer.addEventListener('click', async (e) => {
-        // Clic sur l'icône de suppression par l'admin
         const deleteIcon = e.target.closest('.admin-delete-scrim');
         if (deleteIcon) {
             const scrimId = deleteIcon.dataset.scrimId;
@@ -293,10 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const response = await fetch(`${API_URL}/scrims/${scrimId}?requestingUser=${encodeURIComponent(loggedInUsername)}`, {
                         method: 'DELETE'
                     });
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error);
-                    }
+                    if (!response.ok) throw new Error((await response.json()).error);
                     await renderScrims();
                 } catch (error) {
                     alert(`Erreur: ${error.message}`);
@@ -305,7 +295,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Clic sur les autres boutons
         const button = e.target.closest('button');
         if (!button) return;
 
@@ -371,8 +360,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- INITIALISATION DE LA PAGE ---
     usernameDisplay.textContent = loggedInUsername;
     displayUsernameInNavbar.textContent = loggedInUsername;
-    initializeUserStats();
     updatePremiumDisplay();
+    updateProfileView();
     populateDateSelect();
     showSection(sections.home);
     updateUtcClock();

@@ -38,33 +38,53 @@ async function run() {
     process.exit(1);
   }
 }
-
 run();
 
-// ... Les routes pour les utilisateurs (/register, /login, etc.) sont inchangées ...
 // ===============================================
 //      ROUTES UTILISATEURS
 // ===============================================
+
 app.post('/register', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis.' });
+    
     const userExists = await usersCollection.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
     if (userExists) return res.status(409).json({ error: 'Ce nom d\'utilisateur est déjà pris.' });
-    const result = await usersCollection.insertOne({ username, password, isPremium: false });
+
+    // On initialise toutes les stats de l'utilisateur
+    const newUser = {
+        username,
+        password,
+        isPremium: false,
+        dailyScrims: 0,
+        lastActivityDate: new Date().toISOString().split('T')[0] // Date du jour au format YYYY-MM-DD
+    };
+
+    await usersCollection.insertOne(newUser);
     res.status(201).json({ message: 'Compte créé avec succès !' });
 });
+
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis.' });
+
     const user = await usersCollection.findOne({ username, password });
     if (!user) return res.status(401).json({ error: 'Nom d\'utilisateur ou mot de passe incorrect.' });
-    res.status(200).json({ message: 'Connexion réussie !', username: user.username, isPremium: user.isPremium });
+    
+    // On renvoie les informations nécessaires au client, y compris les stats
+    res.status(200).json({ 
+        message: 'Connexion réussie !', 
+        username: user.username,
+        isPremium: user.isPremium,
+        dailyScrims: user.dailyScrims || 0, // Fournit 0 si le champ n'existe pas pour les anciens comptes
+        lastActivityDate: user.lastActivityDate
+    });
 });
+
+// Les autres routes utilisateur (/users, /premium/toggle, /users/statuses) sont inchangées...
 app.get('/users', async (req, res) => {
     const { requestingUser } = req.query;
-    if (!requestingUser || requestingUser.trim().toLowerCase() !== 'brawlarena.gg') {
-        return res.status(403).json({ error: 'Accès réservé à l\'administrateur.' });
-    }
+    if (!requestingUser || requestingUser.trim().toLowerCase() !== 'brawlarena.gg') { return res.status(403).json({ error: 'Accès réservé à l\'administrateur.' }); }
     const users = await usersCollection.find({}, { projection: { username: 1, _id: 0 } }).toArray();
     res.status(200).json(users);
 });
@@ -80,8 +100,8 @@ app.post('/premium/toggle', async (req, res) => {
 app.post('/users/statuses', async (req, res) => {
     try {
         const { usernames } = req.body;
-        if (!usernames || !Array.isArray(usernames)) return res.status(400).json({ error: "Un tableau de noms d'utilisateurs est requis." });
-        const users = await usersCollection.find({ username: { $in: usernames } }, { projection: { username: 1, isPremium: 1, _id: 0 } }).toArray();
+        if (!usernames || !Array.isArray(usernames)) { return res.status(400).json({ error: "Un tableau de noms d'utilisateurs est requis." }); }
+        const users = await usersCollection.find({ username: { $in: usernames } },{ projection: { username: 1, isPremium: 1, _id: 0 } }).toArray();
         const statusMap = users.reduce((acc, user) => { acc[user.username] = user.isPremium; return acc; }, {});
         res.status(200).json(statusMap);
     } catch (error) { res.status(500).json({ error: "Erreur lors de la récupération des statuts." }); }
@@ -92,7 +112,43 @@ app.post('/users/statuses', async (req, res) => {
 //      ROUTES SCRIMS
 // ===============================================
 
-// ... (la route GET /scrims est inchangée)
+// La route de création de scrim est maintenant sécurisée
+app.post('/scrims', async (req, res) => {
+    const creatorName = req.body.creator;
+    const user = await usersCollection.findOne({ username: creatorName });
+
+    if (!user) {
+        return res.status(404).json({ error: "Utilisateur créateur non trouvé." });
+    }
+    
+    const today = new Date().toISOString().split('T')[0];
+    let dailyScrims = user.dailyScrims || 0;
+
+    // Si la dernière activité n'est pas d'aujourd'hui, on réinitialise le compteur
+    if (user.lastActivityDate !== today) {
+        dailyScrims = 0;
+    }
+
+    // Règle : l'utilisateur est premium OU il a créé moins de 2 scrims aujourd'hui
+    if (!user.isPremium && dailyScrims >= 2) {
+        return res.status(403).json({ error: "Limite journalière de création de scrims atteinte." });
+    }
+
+    // Si tout est bon, on crée le scrim
+    const scrimData = { ...req.body, players: [creatorName] };
+    const result = await scrimsCollection.insertOne(scrimData);
+    
+    // Et on met à jour les stats de l'utilisateur
+    await usersCollection.updateOne(
+        { _id: user._id },
+        { $set: { lastActivityDate: today }, $inc: { dailyScrims: 1 } }
+    );
+    
+    res.status(201).json({ ...scrimData, _id: result.insertedId });
+});
+
+
+// Les autres routes scrims sont inchangées...
 app.get('/scrims', async (req, res) => {
     try {
         const allScrims = await scrimsCollection.find({}).sort({ eventDate: 1, startTime: 1 }).toArray();
@@ -102,40 +158,15 @@ app.get('/scrims', async (req, res) => {
         res.status(500).json({ error: "Erreur lors de la récupération des scrims" });
     }
 });
-
-
-// NOUVELLE ROUTE : Suppression d'un scrim par l'administrateur
 app.delete('/scrims/:id', async (req, res) => {
     const { requestingUser } = req.query;
-
-    // Étape 1 : Vérifier si l'utilisateur est bien l'administrateur
-    if (!requestingUser || requestingUser.trim().toLowerCase() !== 'brawlarena.gg') {
-        return res.status(403).json({ error: 'Action non autorisée.' });
-    }
-
+    if (!requestingUser || requestingUser.trim().toLowerCase() !== 'brawlarena.gg') { return res.status(403).json({ error: 'Action non autorisée.' }); }
     try {
         const scrimId = new ObjectId(req.params.id);
-        
-        // Étape 2 : Supprimer le scrim
         const result = await scrimsCollection.deleteOne({ _id: scrimId });
-
-        if (result.deletedCount === 0) {
-            return res.status(404).json({ error: 'Scrim non trouvé.' });
-        }
-
+        if (result.deletedCount === 0) { return res.status(404).json({ error: 'Scrim non trouvé.' }); }
         res.status(200).json({ message: 'Scrim supprimé avec succès.' });
-
-    } catch (error) {
-        res.status(400).json({ error: 'ID de scrim invalide' });
-    }
-});
-
-
-// ... (les autres routes /post, /join, etc. sont inchangées)
-app.post('/scrims', async (req, res) => {
-    const scrimData = { ...req.body, players: [req.body.creator] };
-    const result = await scrimsCollection.insertOne(scrimData);
-    res.status(201).json({ ...scrimData, _id: result.insertedId });
+    } catch (error) { res.status(400).json({ error: 'ID de scrim invalide' }); }
 });
 app.post('/scrims/:id/join', async (req, res) => {
     try {

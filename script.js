@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Sélection des éléments
     const welcomeSection = document.getElementById('welcome-section');
     const authContainer = document.getElementById('auth-container');
     const registerSection = document.getElementById('register-section');
@@ -11,15 +10,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const showAuthButton = document.getElementById('show-auth-button');
     const messageDisplay = document.getElementById('message');
 
-    // URL du serveur backend
-    const API_URL = 'https://brawlarena-gg.onrender.com'; // Ou 'http://localhost:3000' en local
+    const API_URL = 'https://brawlarena-gg.onrender.com';
 
     function showMessage(msg, type) {
         messageDisplay.textContent = msg;
         messageDisplay.className = type;
     }
 
-    // --- Logique pour afficher/cacher les formulaires ---
     showAuthButton.addEventListener('click', (e) => {
         e.preventDefault();
         welcomeSection.style.display = 'none';
@@ -43,12 +40,10 @@ document.addEventListener('DOMContentLoaded', () => {
         messageDisplay.textContent = '';
     });
     
-    // --- Logique d'inscription ---
     registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const username = document.getElementById('register-username').value;
         const password = document.getElementById('register-password').value;
-
         showMessage('Création du compte en cours...', 'success');
         try {
             const response = await fetch(`${API_URL}/register`, {
@@ -57,7 +52,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ username, password }),
             });
             const data = await response.json();
-
             if (!response.ok) {
                 showMessage(data.error || 'Une erreur est survenue.', 'error');
             } else {
@@ -69,12 +63,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Logique de connexion ---
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const username = document.getElementById('login-username').value;
         const password = document.getElementById('login-password').value;
-        
         showMessage('Vérification en cours...', 'success');
         try {
             const response = await fetch(`${API_URL}/login`, {
@@ -83,16 +75,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ username, password }),
             });
             const data = await response.json();
-
             if (!response.ok) {
                 showMessage(data.error, 'error');
                 return;
             }
 
-            // Si le serveur confirme, on connecte l'utilisateur
+            // On sauvegarde toutes les informations de l'utilisateur
             localStorage.setItem('loggedInUsername', data.username);
-            window.location.href = 'dashboard.html';
+            localStorage.setItem('isPremium', data.isPremium);
+            
+            // On stocke les stats journalières dans un objet dédié
+            const userStats = {
+                dailyScrims: data.dailyScrims,
+                lastActivityDate: data.lastActivityDate
+            };
+            localStorage.setItem('userDailyStats', JSON.stringify(userStats));
 
+            window.location.href = 'dashboard.html';
         } catch (error) {
             showMessage('Erreur de communication avec le serveur.', 'error');
         }
