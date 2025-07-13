@@ -87,7 +87,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isCreator = loggedInUsername === scrim.creator;
                 const isFull = scrim.players.length >= 6;
                 
-                let actionButtonHTML = isUserInScrim ? `<button class="button leave-button" data-scrim-id="${scrim.id}">Quitter</button>` : (!isFull ? `<button class="button join-button" data-scrim-id="${scrim.id}">Rejoindre</button>` : `<button class="button" disabled>Plein</button>`);
+                // CORRECTION ICI: utilise scrim._id
+                let actionButtonHTML = isUserInScrim 
+                    ? `<button class="button leave-button" data-scrim-id="${scrim._id}">Quitter</button>` 
+                    : (!isFull ? `<button class="button join-button" data-scrim-id="${scrim._id}">Rejoindre</button>` : `<button class="button" disabled>Plein</button>`);
 
                 const playersHTML = scrim.players.map(player => {
                     const isPlayerCreator = player === scrim.creator;
@@ -100,8 +103,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 let gameIdHTML = '';
                 const currentIdText = scrim.gameId || 'Non défini';
                 if (isUserInScrim) {
+                    // CORRECTION ICI: utilise scrim._id
                     gameIdHTML = isCreator
-                        ? `<p><strong>ID Partie :</strong> <span class="game-id-container" data-scrim-id="${scrim.id}"><span class="game-id-text">${currentIdText}</span><button class="edit-id-button"><img src="images/edit.png" alt="Modifier"></button></span></p>`
+                        ? `<p><strong>ID Partie :</strong> <span class="game-id-container" data-scrim-id="${scrim._id}"><span class="game-id-text">${currentIdText}</span><button class="edit-id-button"><img src="images/edit.png" alt="Modifier"></button></span></p>`
                         : `<p><strong>ID Partie :</strong> ${currentIdText}</p>`;
                 } else {
                     gameIdHTML = `<p><strong>ID Partie :</strong> Rejoignez pour voir</p>`;
