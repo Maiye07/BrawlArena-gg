@@ -58,9 +58,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const showUsersButton = document.getElementById('show-users-button');
     const usersListContainer = document.getElementById('users-list-container');
 
-    const rankOrder = ['Légendaire I', 'Légendaire II', 'Légendaire III', 'Master I', 'Master II', 'Master III', 'Pro'];
-
     // --- FONCTIONS PRINCIPALES ---
+
+    function updateAllCountdowns() {
+        const countdownElements = document.querySelectorAll('.countdown-timer');
+        countdownElements.forEach(element => {
+            const startTime = new Date(element.dataset.startTime);
+            const now = new Date();
+            const diff = startTime - now;
+
+            if (diff <= 0) {
+                element.innerHTML = `<span style="color: var(--success-color);">Commencé</span>`;
+                return;
+            }
+
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            element.textContent = `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+        });
+    }
 
     async function renderScrims() {
         try {
@@ -79,11 +97,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const premiumStatus = await statusesResponse.json();
 
-                const sortMethod = sortScrimsSelect.value;
-                if (sortMethod === 'time-asc') scrims.sort((a, b) => `${a.eventDate}T${a.startTime}`.localeCompare(`${b.eventDate}T${b.startTime}`));
-                else if (sortMethod === 'rank-asc') scrims.sort((a, b) => rankOrder.indexOf(a.avgRank) - rankOrder.indexOf(b.avgRank));
-                else if (sortMethod === 'rank-desc') scrims.sort((a, b) => rankOrder.indexOf(b.avgRank) - rankOrder.indexOf(a.avgRank));
-
                 scrimsListContainer.innerHTML = '';
                 scrims.forEach(scrim => {
                     const card = document.createElement('div');
@@ -93,7 +106,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (loggedInUsername.toLowerCase() === 'brawlarena.gg') {
                         adminDeleteIcon = `<span class="admin-delete-scrim" data-scrim-id="${scrim._id}" title="Supprimer le scrim">🗑️</span>`;
                     }
-
                     const playersHTML = scrim.players.map(player => {
                         const isPlayerPremium = premiumStatus[player] || false;
                         const isPlayerCreator = player === scrim.creator;
@@ -116,22 +128,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else {
                         gameIdHTML = `<p><strong>ID Partie :</strong> Rejoignez pour voir</p>`;
                     }
-
-                    const scrimDate = new Date(`${scrim.eventDate}T00:00:00Z`);
-                    const today = new Date(); today.setUTCHours(0, 0, 0, 0);
-                    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-                    const dateLabel = scrimDate.getTime() === today.getTime() ? "Aujourd'hui" : scrimDate.getTime() === tomorrow.getTime() ? "Demain" : scrimDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-
+                    
+                    const countdownHTML = `<p><strong>Commence dans :</strong> <span class="countdown-timer" data-start-time="${scrim.startTime}">Calcul...</span></p>`;
+                    
                     card.innerHTML = `
                         ${adminDeleteIcon}
                         <h3>${scrim.roomName}</h3> ${gameIdHTML}
                         <p><strong>Rang Moyen :</strong> ${scrim.avgRank}</p>
-                        <p><strong>Début (UTC) :</strong> ${dateLabel} à ${scrim.startTime}</p>
+                        ${countdownHTML}
                         <div class="players-list"><strong>Joueurs (${scrim.players.length}/6) :</strong><ul>${playersHTML}</ul></div>
                         <div class="scrim-actions">${actionButtonHTML}</div>
                     `;
                     scrimsListContainer.appendChild(card);
                 });
+                
+                updateAllCountdowns();
+
             } else {
                 scrimsListContainer.innerHTML = '<p>Aucun scrim en cours. Soyez le premier à en créer un !</p>';
             }
@@ -159,21 +171,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateUtcClock() {
         const now = new Date();
         utcClockElement.textContent = `UTC ${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}:${String(now.getUTCSeconds()).padStart(2, '0')}`;
-    }
-
-    function populateDateSelect() {
-        const dateSelect = document.getElementById('scrim-date');
-        const today = new Date();
-        for (let i = 0; i < 3; i++) {
-            const date = new Date(today);
-            date.setDate(today.getDate() + i);
-            const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-            const label = i === 0 ? "Aujourd'hui" : i === 1 ? "Demain" : date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-            const option = document.createElement('option');
-            option.value = value;
-            option.textContent = label;
-            dateSelect.appendChild(option);
-        }
     }
 
     function showSection(sectionToShow) {
@@ -235,8 +232,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    sortScrimsSelect.addEventListener('change', renderScrims);
-
     showScrimModalButton.addEventListener('click', () => {
         updateProfileView();
         
@@ -247,25 +242,28 @@ document.addEventListener('DOMContentLoaded', () => {
         createScrimModal.style.display = 'flex';
     });
     
-    // #############################################################
-    // ###          CORRECTION DU BUG DE DOUBLE-CLIC             ###
-    // #############################################################
     createScrimForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
         const submitButton = createScrimForm.querySelector('button[type="submit"]');
+        const hours = parseInt(document.getElementById('scrim-hours').value) || 0;
+        const minutes = parseInt(document.getElementById('scrim-minutes').value) || 0;
+        const totalMinutes = (hours * 60) + minutes;
+
+        if (totalMinutes <= 0 || totalMinutes > 2880) {
+            alert("La durée doit être comprise entre 1 minute et 48 heures.");
+            return;
+        }
 
         const scrimData = {
             creator: loggedInUsername,
-            eventDate: document.getElementById('scrim-date').value,
             roomName: document.getElementById('scrim-name').value,
             gameId: document.getElementById('scrim-game-id').value,
             avgRank: document.getElementById('scrim-rank').value,
-            startTime: document.getElementById('scrim-start-time').value,
+            startsInMinutes: totalMinutes,
         };
 
         try {
-            // On désactive le bouton pour empêcher les clics multiples
             submitButton.disabled = true;
             submitButton.textContent = 'Création...';
 
@@ -282,12 +280,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             createScrimForm.reset();
+            document.getElementById('scrim-hours').value = 0;
+            document.getElementById('scrim-minutes').value = 30;
             createScrimModal.style.display = 'none';
             await renderScrims();
         } catch (error) {
             alert(`Erreur: ${error.message}`);
         } finally {
-            // Quoi qu'il arrive, on réactive le bouton et on remet son texte original
             submitButton.disabled = false;
             submitButton.textContent = 'Créer le salon';
         }
@@ -381,9 +380,8 @@ document.addEventListener('DOMContentLoaded', () => {
     displayUsernameInNavbar.textContent = loggedInUsername;
     updatePremiumDisplay();
     updateProfileView();
-    populateDateSelect();
     showSection(sections.home);
     updateUtcClock();
     setInterval(updateUtcClock, 1000);
-    setInterval(async () => { if (sections.scrims.style.display === 'block') await renderScrims(); }, 30000);
+    setInterval(updateAllCountdowns, 1000); // Met à jour les comptes à rebours chaque seconde
 });

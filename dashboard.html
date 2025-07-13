@@ -87,20 +87,16 @@
             <div id="scrims-section" style="display: none;">
                 <div class="section-header">
                     <h2>Scrims en cours</h2>
-                    <div class="sort-controls">
+                    <div class="sort-controls" style="display:none;"> 
                         <label for="sort-scrims">Trier par :</label>
                         <select id="sort-scrims">
-                            <option value="default">Défaut</option>
                             <option value="time-asc">Heure (plus proche)</option>
-                            <option value="rank-asc">Rang (croissant)</option>
-                            <option value="rank-desc">Rang (décroissant)</option>
                         </select>
                     </div>
                     <button id="show-scrim-modal-button" class="button">Créer un Scrim</button>
                 </div>
                 <div id="scrims-list-container"></div>
             </div>
-
         </main>
     </div>
 
@@ -126,11 +122,18 @@
                     <option value="Pro">Pro</option>
                 </select>
 
-                <label for="scrim-date">Date du scrim :</label>
-                <select id="scrim-date" required></select>
+                <label>Commence dans :</label>
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 1;">
+                        <label for="scrim-hours">Heures (0-47)</label>
+                        <input type="number" id="scrim-hours" min="0" max="47" value="0">
+                    </div>
+                    <div style="flex: 1;">
+                        <label for="scrim-minutes">Minutes (0-59)</label>
+                        <input type="number" id="scrim-minutes" min="0" max="59" value="30">
+                    </div>
+                </div>
 
-                <label for="scrim-start-time">Heure de commencement (UTC) :</label>
-                <input type="time" id="scrim-start-time" required>
                 <button type="submit">Créer le salon</button>
             </form>
         </div>
