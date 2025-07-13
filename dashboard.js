@@ -152,8 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         profileUsername.textContent = loggedInUsername;
-        // La partie tournois n'est pas implémentée côté serveur, on la met en non disponible
-        profileDailyTournaments.textContent = 'N/A'; 
+        profileDailyTournaments.textContent = 'N/A';
         profileDailyScrims.textContent = isCurrentUserPremium ? 'Illimité ✨' : Math.max(0, 2 - userDailyStats.dailyScrims);
     }
 
@@ -248,8 +247,15 @@ document.addEventListener('DOMContentLoaded', () => {
         createScrimModal.style.display = 'flex';
     });
     
+    // #############################################################
+    // ###          SECTION CORRIGÉE POUR LE BUG                 ###
+    // #############################################################
     createScrimForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        
+        // On sélectionne le bouton de soumission
+        const submitButton = createScrimForm.querySelector('button[type="submit"]');
+
         const scrimData = {
             creator: loggedInUsername,
             eventDate: document.getElementById('scrim-date').value,
@@ -258,10 +264,17 @@ document.addEventListener('DOMContentLoaded', () => {
             avgRank: document.getElementById('scrim-rank').value,
             startTime: document.getElementById('scrim-start-time').value,
         };
+
         try {
+            // On désactive le bouton et on change son texte
+            submitButton.disabled = true;
+            submitButton.textContent = 'Création...';
+
             const response = await fetch(`${API_URL}/scrims`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(scrimData) });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || "Erreur de création");
+            if (!response.ok) {
+                throw new Error(data.error || "Erreur de création");
+            }
             
             if (!isCurrentUserPremium) {
                 userDailyStats.dailyScrims++;
@@ -274,10 +287,15 @@ document.addEventListener('DOMContentLoaded', () => {
             await renderScrims();
         } catch (error) {
             alert(`Erreur: ${error.message}`);
+        } finally {
+            // Quoi qu'il arrive (succès ou erreur), on réactive le bouton
+            submitButton.disabled = false;
+            submitButton.textContent = 'Créer le salon';
         }
     });
 
     scrimsListContainer.addEventListener('click', async (e) => {
+        // Clic sur l'icône de suppression par l'admin
         const deleteIcon = e.target.closest('.admin-delete-scrim');
         if (deleteIcon) {
             const scrimId = deleteIcon.dataset.scrimId;
@@ -286,7 +304,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     const response = await fetch(`${API_URL}/scrims/${scrimId}?requestingUser=${encodeURIComponent(loggedInUsername)}`, {
                         method: 'DELETE'
                     });
-                    if (!response.ok) throw new Error((await response.json()).error);
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error);
+                    }
                     await renderScrims();
                 } catch (error) {
                     alert(`Erreur: ${error.message}`);
