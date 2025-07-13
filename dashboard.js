@@ -248,12 +248,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // #############################################################
-    // ###          SECTION CORRIGÉE POUR LE BUG                 ###
+    // ###          CORRECTION DU BUG DE DOUBLE-CLIC             ###
     // #############################################################
     createScrimForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        // On sélectionne le bouton de soumission
         const submitButton = createScrimForm.querySelector('button[type="submit"]');
 
         const scrimData = {
@@ -266,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         try {
-            // On désactive le bouton et on change son texte
+            // On désactive le bouton pour empêcher les clics multiples
             submitButton.disabled = true;
             submitButton.textContent = 'Création...';
 
@@ -288,14 +287,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             alert(`Erreur: ${error.message}`);
         } finally {
-            // Quoi qu'il arrive (succès ou erreur), on réactive le bouton
+            // Quoi qu'il arrive, on réactive le bouton et on remet son texte original
             submitButton.disabled = false;
             submitButton.textContent = 'Créer le salon';
         }
     });
 
     scrimsListContainer.addEventListener('click', async (e) => {
-        // Clic sur l'icône de suppression par l'admin
         const deleteIcon = e.target.closest('.admin-delete-scrim');
         if (deleteIcon) {
             const scrimId = deleteIcon.dataset.scrimId;
