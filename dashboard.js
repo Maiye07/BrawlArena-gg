@@ -180,12 +180,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- GESTIONNAIRES D'ÉVÉNEMENTS ---
 
-    // AJOUT : Rendre le pseudo dans la barre de navigation cliquable
-    displayUsernameInNavbar.addEventListener('click', () => {
-        // Simule un clic sur le lien "Profil" du menu pour éviter de répéter le code
-        links.profile.click();
-    });
-
     premiumButton.addEventListener('click', (e) => {
         e.preventDefault();
         window.location.href = 'premium.html';
@@ -393,5 +387,5 @@ document.addEventListener('DOMContentLoaded', () => {
     showSection(sections.home);
     updateUtcClock();
     setInterval(updateUtcClock, 1000);
-    setInterval(updateAllCountdowns, 1000);
+    setInterval(updateAllCountdowns, 1000); // Met à jour les comptes à rebours chaque seconde
 });
