@@ -44,6 +44,14 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const username = document.getElementById('register-username').value;
         const password = document.getElementById('register-password').value;
+
+        // AJOUT : Validation du format du nom d'utilisateur côté client
+        const validUsernameRegex = /^[A-Za-z0-9]+$/;
+        if (!validUsernameRegex.test(username)) {
+            showMessage('Pseudo invalide.', 'error');
+            return; // On arrête l'exécution
+        }
+
         showMessage('Création du compte en cours...', 'success');
         try {
             const response = await fetch(`${API_URL}/register`, {
@@ -80,11 +88,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // On sauvegarde toutes les informations de l'utilisateur
             localStorage.setItem('loggedInUsername', data.username);
             localStorage.setItem('isPremium', data.isPremium);
             
-            // On stocke les stats journalières dans un objet dédié
             const userStats = {
                 dailyScrims: data.dailyScrims,
                 lastActivityDate: data.lastActivityDate

@@ -2,24 +2,16 @@ const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const path = require('path'); // <-- AJOUTER CETTE LIGNE
+const path = require('path');
 
 const app = express();
 const port = 3000;
 
 app.use(cors());
 
-// On place le service des fichiers statiques AVANT les routes API
-// Cette ligne dit à Express de servir les fichiers du dossier 'public'
-app.use(express.static(path.join(__dirname, 'public'))); // <-- AJOUTER CETTE LIGNE
-
-// Le webhook Stripe a besoin du corps brut, il est placé avant express.json()
 app.post('/stripe-webhook', express.raw({type: 'application/json'}), async (req, res) => {
-    // ... (le code du webhook reste le même)
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    if (!webhookSecret) {
-        return res.status(400).send('Webhook secret not configured.');
-    }
+    if (!webhookSecret) return res.status(400).send('Webhook secret not configured.');
     const sig = req.headers['stripe-signature'];
     let event;
     try {
@@ -39,13 +31,11 @@ app.post('/stripe-webhook', express.raw({type: 'application/json'}), async (req,
     res.status(200).json({ received: true });
 });
 
-// Ce middleware parse le JSON pour toutes les autres routes API
 app.use(express.json());
+app.use(express.static(__dirname)); // Pour servir les fichiers statiques depuis la racine
 
 const uri = process.env.MONGO_URI;
-if (!uri) {
-    throw new Error('La variable d\'environnement MONGO_URI est manquante.');
-}
+if (!uri) throw new Error('La variable d\'environnement MONGO_URI est manquante.');
 
 const client = new MongoClient(uri, {
   serverApi: { version: ServerApiVersion.v1, strict: true, deprecationErrors: true }
@@ -58,15 +48,12 @@ async function run() {
   try {
     await client.connect();
     console.log("Connecté avec succès à MongoDB Atlas !");
-    
     const database = client.db("brawlarenaDB");
     usersCollection = database.collection("users");
     scrimsCollection = database.collection("scrims");
-    
     app.listen(port, () => {
         console.log(`Serveur Express démarré sur http://localhost:${port}`);
     });
-
   } catch (err) {
     console.error("Échec de la connexion à MongoDB", err);
     process.exit(1);
@@ -74,50 +61,34 @@ async function run() {
 }
 run();
 
-
 // ===============================================
-//      ROUTES API (inchangées)
+//      ROUTES API
 // ===============================================
 
-// --- Route de paiement ---
-app.post('/create-checkout-session', async (req, res) => {
-    const { username } = req.body;
-    const appUrl = process.env.YOUR_APP_URL || 'http://localhost:5500';
-
-    try {
-        const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
-            mode: 'payment',
-            line_items: [{
-                price_data: {
-                    currency: 'eur',
-                    product_data: { name: 'BrawlArena.gg - Membre Premium' },
-                    unit_amount: 500,
-                },
-                quantity: 1,
-            }],
-            metadata: { username: username },
-            success_url: `${appUrl}/dashboard.html?payment=success`,
-            cancel_url: `${appUrl}/dashboard.html?payment=cancel`,
-        });
-        res.status(200).json({ url: session.url });
-    } catch (error) {
-        console.error("Erreur de création de session Stripe:", error);
-        res.status(500).json({ error: "Impossible de lancer le paiement." });
-    }
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// --- Routes Utilisateurs ---
+// --- Utilisateurs ---
 app.post('/register', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis.' });
+
+    // AJOUT : Validation du format du nom d'utilisateur
+    const validUsernameRegex = /^[A-Za-z0-9]+$/;
+    if (!validUsernameRegex.test(username)) {
+        return res.status(400).json({ error: 'Pseudo invalide.' });
+    }
+    
     const userExists = await usersCollection.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
     if (userExists) return res.status(409).json({ error: 'Ce nom d\'utilisateur est déjà pris.' });
+
     const newUser = { username, password, isPremium: false, dailyScrims: 0, lastActivityDate: new Date().toISOString().split('T')[0] };
     await usersCollection.insertOne(newUser);
     res.status(201).json({ message: 'Compte créé avec succès !' });
 });
 
+// ... (le reste des routes est inchangé)
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis.' });
@@ -131,14 +102,12 @@ app.post('/login', async (req, res) => {
         lastActivityDate: user.lastActivityDate
     });
 });
-
 app.get('/users', async (req, res) => {
     const { requestingUser } = req.query;
     if (!requestingUser || requestingUser.trim().toLowerCase() !== 'brawlarena.gg') { return res.status(403).json({ error: 'Accès réservé à l\'administrateur.' }); }
     const users = await usersCollection.find({}, { projection: { username: 1, _id: 0 } }).toArray();
     res.status(200).json(users);
 });
-
 app.post('/premium/toggle', async (req, res) => {
     const { username } = req.body;
     if (!username) return res.status(400).json({ error: "Nom d'utilisateur manquant" });
@@ -148,7 +117,6 @@ app.post('/premium/toggle', async (req, res) => {
     await usersCollection.updateOne({ username }, { $set: { isPremium: newPremiumStatus } });
     res.status(200).json({ username, isPremium: newPremiumStatus });
 });
-
 app.post('/users/statuses', async (req, res) => {
     try {
         const { usernames } = req.body;
@@ -158,31 +126,45 @@ app.post('/users/statuses', async (req, res) => {
         res.status(200).json(statusMap);
     } catch (error) { res.status(500).json({ error: "Erreur lors de la récupération des statuts." }); }
 });
+app.post('/create-checkout-session', async (req, res) => {
+    const { username } = req.body;
+    const appUrl = process.env.YOUR_APP_URL || 'http://localhost:5500';
+    try {
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            mode: 'payment',
+            line_items: [{
+                price_data: { currency: 'eur', product_data: { name: 'BrawlArena.gg - Membre Premium' }, unit_amount: 500, },
+                quantity: 1,
+            }],
+            metadata: { username: username },
+            success_url: `${appUrl}/dashboard.html?payment=success`,
+            cancel_url: `${appUrl}/dashboard.html?payment=cancel`,
+        });
+        res.status(200).json({ url: session.url });
+    } catch (error) {
+        console.error("Erreur de création de session Stripe:", error);
+        res.status(500).json({ error: "Impossible de lancer le paiement." });
+    }
+});
 
-// --- Routes Scrims ---
-// ... (Toutes vos routes API pour les scrims restent ici et sont inchangées)
+// --- Scrims ---
 app.post('/scrims', async (req, res) => {
     const { creator, roomName, gameId, avgRank, startsInMinutes } = req.body;
     if (!creator || !roomName || !avgRank || startsInMinutes === undefined) { return res.status(400).json({ error: "Informations manquantes pour la création du scrim." }); }
     if (startsInMinutes <= 0 || startsInMinutes > 2880) { return res.status(400).json({ error: "La durée doit être comprise entre 1 minute et 48 heures." }); }
-
     const user = await usersCollection.findOne({ username: creator });
     if (!user) return res.status(404).json({ error: "Utilisateur créateur non trouvé." });
-    
     const today = new Date().toISOString().split('T')[0];
     let dailyScrims = user.dailyScrims || 0;
     if (user.lastActivityDate !== today) { dailyScrims = 0; }
     if (!user.isPremium && dailyScrims >= 2) { return res.status(403).json({ error: "Limite journalière de création de scrims atteinte." }); }
-
     const startTime = new Date(Date.now() + startsInMinutes * 60 * 1000);
     const scrimData = { creator, roomName, gameId, avgRank, startTime, players: [creator] };
     const result = await scrimsCollection.insertOne(scrimData);
-    
     await usersCollection.updateOne({ _id: user._id }, { $set: { lastActivityDate: today }, $inc: { dailyScrims: 1 } });
-    
     res.status(201).json({ ...scrimData, _id: result.insertedId });
 });
-
 app.get('/scrims', async (req, res) => {
     try {
         const allScrims = await scrimsCollection.find({}).sort({ startTime: 1 }).toArray();
@@ -192,7 +174,6 @@ app.get('/scrims', async (req, res) => {
         res.status(500).json({ error: "Erreur lors de la récupération des scrims" });
     }
 });
-
 app.delete('/scrims/:id', async (req, res) => {
     const { requestingUser } = req.query;
     if (!requestingUser || requestingUser.trim().toLowerCase() !== 'brawlarena.gg') { return res.status(403).json({ error: 'Action non autorisée.' }); }
@@ -203,7 +184,6 @@ app.delete('/scrims/:id', async (req, res) => {
         res.status(200).json({ message: 'Scrim supprimé avec succès.' });
     } catch (error) { res.status(400).json({ error: 'ID de scrim invalide' }); }
 });
-
 app.post('/scrims/:id/join', async (req, res) => {
     try {
         const scrimId = new ObjectId(req.params.id);
@@ -216,7 +196,6 @@ app.post('/scrims/:id/join', async (req, res) => {
         res.status(200).json({ message: 'Rejoint avec succès' });
     } catch (error) { res.status(400).json({ error: 'ID de scrim invalide' }); }
 });
-
 app.post('/scrims/:id/leave', async (req, res) => {
     try {
         const scrimId = new ObjectId(req.params.id);
@@ -228,7 +207,6 @@ app.post('/scrims/:id/leave', async (req, res) => {
         res.status(200).json({ message: 'Action effectuée avec succès.' });
     } catch (error) { res.status(400).json({ error: 'ID de scrim invalide' }); }
 });
-
 app.patch('/scrims/:id/gameid', async (req, res) => {
     try {
         const scrimId = new ObjectId(req.params.id);
