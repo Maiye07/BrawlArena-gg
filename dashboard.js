@@ -180,7 +180,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- GESTIONNAIRES D'ÉVÉNEMENTS ---
 
+    // AJOUT : Rendre le pseudo dans la barre de navigation cliquable
     displayUsernameInNavbar.addEventListener('click', () => {
+        // Simule un clic sur le lien "Profil" du menu pour éviter de répéter le code
         links.profile.click();
     });
 
@@ -189,14 +191,11 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = 'premium.html';
     });
 
-    // MODIFICATION DE CE BLOC
     logoutButton.addEventListener('click', () => {
-        if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
-            localStorage.removeItem('loggedInUsername');
-            localStorage.removeItem('isPremium');
-            localStorage.removeItem('userDailyStats');
-            window.location.href = 'index.html';
-        }
+        localStorage.removeItem('loggedInUsername');
+        localStorage.removeItem('isPremium');
+        localStorage.removeItem('userDailyStats');
+        window.location.href = 'index.html';
     });
     
     togglePremiumButton.addEventListener('click', async () => {
