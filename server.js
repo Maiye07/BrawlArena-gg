@@ -1,14 +1,45 @@
 const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-// Initialisation de Stripe avec la clé secrète depuis les variables d'environnement
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const path = require('path'); // <-- AJOUTER CETTE LIGNE
 
 const app = express();
 const port = 3000;
 
-// Le middleware cors() et express.json() sont utilisés pour la plupart des routes
 app.use(cors());
+
+// On place le service des fichiers statiques AVANT les routes API
+// Cette ligne dit à Express de servir les fichiers du dossier 'public'
+app.use(express.static(path.join(__dirname, 'public'))); // <-- AJOUTER CETTE LIGNE
+
+// Le webhook Stripe a besoin du corps brut, il est placé avant express.json()
+app.post('/stripe-webhook', express.raw({type: 'application/json'}), async (req, res) => {
+    // ... (le code du webhook reste le même)
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+        return res.status(400).send('Webhook secret not configured.');
+    }
+    const sig = req.headers['stripe-signature'];
+    let event;
+    try {
+        event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } catch (err) {
+        console.log(`Webhook Error: ${err.message}`);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+    if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
+        const username = session.metadata.username;
+        if (username) {
+            console.log(`Paiement réussi pour: ${username}. Mise à jour du statut premium.`);
+            await usersCollection.updateOne({ username: username }, { $set: { isPremium: true } });
+        }
+    }
+    res.status(200).json({ received: true });
+});
+
+// Ce middleware parse le JSON pour toutes les autres routes API
 app.use(express.json());
 
 const uri = process.env.MONGO_URI;
@@ -43,14 +74,14 @@ async function run() {
 }
 run();
 
+
 // ===============================================
-//      ROUTES DE PAIEMENT STRIPE
+//      ROUTES API (inchangées)
 // ===============================================
 
+// --- Route de paiement ---
 app.post('/create-checkout-session', async (req, res) => {
     const { username } = req.body;
-    
-    // URL de base de votre application, à définir dans les variables d'environnement
     const appUrl = process.env.YOUR_APP_URL || 'http://localhost:5500';
 
     try {
@@ -60,21 +91,15 @@ app.post('/create-checkout-session', async (req, res) => {
             line_items: [{
                 price_data: {
                     currency: 'eur',
-                    product_data: {
-                        name: 'BrawlArena.gg - Membre Premium',
-                        description: 'Accès illimité à la création de scrims et tournois.',
-                    },
-                    unit_amount: 500, // 5.00 EUR (montant en centimes)
+                    product_data: { name: 'BrawlArena.gg - Membre Premium' },
+                    unit_amount: 500,
                 },
                 quantity: 1,
             }],
-            metadata: {
-                username: username // On stocke le nom d'utilisateur pour savoir qui mettre à jour
-            },
+            metadata: { username: username },
             success_url: `${appUrl}/dashboard.html?payment=success`,
             cancel_url: `${appUrl}/dashboard.html?payment=cancel`,
         });
-        
         res.status(200).json({ url: session.url });
     } catch (error) {
         console.error("Erreur de création de session Stripe:", error);
@@ -82,40 +107,7 @@ app.post('/create-checkout-session', async (req, res) => {
     }
 });
 
-// Le webhook utilise un middleware spécifique pour récupérer le corps brut de la requête
-app.post('/stripe-webhook', express.raw({type: 'application/json'}), async (req, res) => {
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    if (!webhookSecret) {
-        return res.status(400).send('Webhook secret not configured.');
-    }
-    
-    const sig = req.headers['stripe-signature'];
-    let event;
-
-    try {
-        event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-    } catch (err) {
-        console.log(`Webhook Error: ${err.message}`);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-
-    if (event.type === 'checkout.session.completed') {
-        const session = event.data.object;
-        const username = session.metadata.username;
-
-        if (username) {
-            console.log(`Paiement réussi pour: ${username}. Mise à jour du statut premium.`);
-            await usersCollection.updateOne({ username: username }, { $set: { isPremium: true } });
-        }
-    }
-    
-    res.status(200).json({ received: true });
-});
-
-
-// ===============================================
-//      ROUTES UTILISATEURS
-// ===============================================
+// --- Routes Utilisateurs ---
 app.post('/register', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis.' });
@@ -167,9 +159,8 @@ app.post('/users/statuses', async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Erreur lors de la récupération des statuts." }); }
 });
 
-// ===============================================
-//      ROUTES SCRIMS
-// ===============================================
+// --- Routes Scrims ---
+// ... (Toutes vos routes API pour les scrims restent ici et sont inchangées)
 app.post('/scrims', async (req, res) => {
     const { creator, roomName, gameId, avgRank, startsInMinutes } = req.body;
     if (!creator || !roomName || !avgRank || startsInMinutes === undefined) { return res.status(400).json({ error: "Informations manquantes pour la création du scrim." }); }
