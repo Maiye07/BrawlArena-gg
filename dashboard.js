@@ -20,11 +20,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const navbarPremiumBadge = document.getElementById('navbar-premium-badge');
     const logoutButton = document.getElementById('logout-button');
     const togglePremiumButton = document.getElementById('toggle-premium-button');
-    const sortScrimsSelect = document.getElementById('sort-scrims');
-    
-    // NOUVEL ÉLÉMENT SÉLECTIONNÉ
     const premiumButton = document.getElementById('premium-button');
-
+    
     const sections = {
         home: document.getElementById('dashboard-home-section'),
         profile: document.getElementById('profile-section'),
@@ -61,9 +58,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const showUsersButton = document.getElementById('show-users-button');
     const usersListContainer = document.getElementById('users-list-container');
 
-    const rankOrder = ['Légendaire I', 'Légendaire II', 'Légendaire III', 'Master I', 'Master II', 'Master III', 'Pro'];
+    // --- FONCTIONS PRINCIPALES ---
 
-    // --- FONCTIONS PRINCIPALES (inchangées) ---
+    function updateAllCountdowns() {
+        const countdownElements = document.querySelectorAll('.countdown-timer');
+        countdownElements.forEach(element => {
+            const startTime = new Date(element.dataset.startTime);
+            const now = new Date();
+            const diff = startTime - now;
+
+            if (diff <= 0) {
+                element.innerHTML = `<span style="color: var(--success-color);">Commencé</span>`;
+                return;
+            }
+
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            element.textContent = `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+        });
+    }
+
     async function renderScrims() {
         try {
             const scrimsResponse = await fetch(`${API_URL}/scrims`);
@@ -136,26 +152,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function updateAllCountdowns() {
-        const countdownElements = document.querySelectorAll('.countdown-timer');
-        countdownElements.forEach(element => {
-            const startTime = new Date(element.dataset.startTime);
-            const now = new Date();
-            const diff = startTime - now;
-
-            if (diff <= 0) {
-                element.innerHTML = `<span style="color: var(--success-color);">Commencé</span>`;
-                return;
-            }
-
-            const hours = Math.floor(diff / (1000 * 60 * 60));
-            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-            element.textContent = `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
-        });
-    }
-
     function updatePremiumDisplay() {
         navbarPremiumBadge.innerHTML = isCurrentUserPremium ? `<img src="images/Certif.png" alt="Premium" class="premium-badge">` : '';
         displayUsernameInNavbar.classList.toggle('premium-username', isCurrentUserPremium);
@@ -184,28 +180,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- GESTIONNAIRES D'ÉVÉNEMENTS ---
 
-    // NOUVEL ÉVÉNEMENT AJOUTÉ POUR LE BOUTON PREMIUM
-    premiumButton.addEventListener('click', async (e) => {
+    premiumButton.addEventListener('click', (e) => {
         e.preventDefault();
-        
-        try {
-            const response = await fetch(`${API_URL}/create-checkout-session`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: loggedInUsername })
-            });
-
-            if (!response.ok) {
-                throw new Error("Impossible de préparer le paiement.");
-            }
-
-            const session = await response.json();
-            // Redirige l'utilisateur vers la page de paiement hébergée par Stripe
-            window.location.href = session.url;
-
-        } catch (error) {
-            alert(error.message);
-        }
+        window.location.href = 'premium.html';
     });
 
     logoutButton.addEventListener('click', () => {
@@ -410,5 +387,5 @@ document.addEventListener('DOMContentLoaded', () => {
     showSection(sections.home);
     updateUtcClock();
     setInterval(updateUtcClock, 1000);
-    setInterval(updateAllCountdowns, 1000);
+    setInterval(updateAllCountdowns, 1000); // Met à jour les comptes à rebours chaque seconde
 });
