@@ -32,6 +32,10 @@
                 <li><a href="#" id="about-link">À propos</a></li>
             </ul>
 
+            <a href="#" id="premium-button" class="premium-button">
+                Devenir Membre Premium
+            </a>
+
             <div class="social-links">
                 <a href="https://discord.gg/xqB64Dug5t" target="_blank" class="social-button discord-button">
                     Rejoindre le Discord
@@ -60,7 +64,7 @@
                     <p><strong>Tournois gagnés :</strong> <span id="profile-tournaments-won">0</span></p>
                     <hr>
                     <h3>Créations journalières</h3>
-                    <p>Tournois restants : <strong><span id="profile-daily-tournaments">1</span></strong></p>
+                    <p>Tournois restants : <strong><span id="profile-daily-tournaments">N/A</span></strong></p>
                     <p>Scrims restants : <strong><span id="profile-daily-scrims">2</span></strong></p>
                 </div>
             </div>
@@ -87,7 +91,7 @@
             <div id="scrims-section" style="display: none;">
                 <div class="section-header">
                     <h2>Scrims en cours</h2>
-                    <div class="sort-controls" style="display:none;"> 
+                    <div class="sort-controls" style="display:none;">
                         <label for="sort-scrims">Trier par :</label>
                         <select id="sort-scrims">
                             <option value="time-asc">Heure (plus proche)</option>
@@ -97,6 +101,7 @@
                 </div>
                 <div id="scrims-list-container"></div>
             </div>
+
         </main>
     </div>
 

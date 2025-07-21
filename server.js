@@ -1,10 +1,13 @@
 const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+// Initialisation de Stripe avec la clé secrète depuis les variables d'environnement
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 const port = 3000;
 
+// Le middleware cors() et express.json() sont utilisés pour la plupart des routes
 app.use(cors());
 app.use(express.json());
 
@@ -41,7 +44,77 @@ async function run() {
 run();
 
 // ===============================================
-//      ROUTES UTILISATEURS (Inchangées)
+//      ROUTES DE PAIEMENT STRIPE
+// ===============================================
+
+app.post('/create-checkout-session', async (req, res) => {
+    const { username } = req.body;
+    
+    // URL de base de votre application, à définir dans les variables d'environnement
+    const appUrl = process.env.YOUR_APP_URL || 'http://localhost:5500';
+
+    try {
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            mode: 'payment',
+            line_items: [{
+                price_data: {
+                    currency: 'eur',
+                    product_data: {
+                        name: 'BrawlArena.gg - Membre Premium',
+                        description: 'Accès illimité à la création de scrims et tournois.',
+                    },
+                    unit_amount: 500, // 5.00 EUR (montant en centimes)
+                },
+                quantity: 1,
+            }],
+            metadata: {
+                username: username // On stocke le nom d'utilisateur pour savoir qui mettre à jour
+            },
+            success_url: `${appUrl}/dashboard.html?payment=success`,
+            cancel_url: `${appUrl}/dashboard.html?payment=cancel`,
+        });
+        
+        res.status(200).json({ url: session.url });
+    } catch (error) {
+        console.error("Erreur de création de session Stripe:", error);
+        res.status(500).json({ error: "Impossible de lancer le paiement." });
+    }
+});
+
+// Le webhook utilise un middleware spécifique pour récupérer le corps brut de la requête
+app.post('/stripe-webhook', express.raw({type: 'application/json'}), async (req, res) => {
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+        return res.status(400).send('Webhook secret not configured.');
+    }
+    
+    const sig = req.headers['stripe-signature'];
+    let event;
+
+    try {
+        event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } catch (err) {
+        console.log(`Webhook Error: ${err.message}`);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
+        const username = session.metadata.username;
+
+        if (username) {
+            console.log(`Paiement réussi pour: ${username}. Mise à jour du statut premium.`);
+            await usersCollection.updateOne({ username: username }, { $set: { isPremium: true } });
+        }
+    }
+    
+    res.status(200).json({ received: true });
+});
+
+
+// ===============================================
+//      ROUTES UTILISATEURS
 // ===============================================
 app.post('/register', async (req, res) => {
     const { username, password } = req.body;
@@ -97,46 +170,30 @@ app.post('/users/statuses', async (req, res) => {
 // ===============================================
 //      ROUTES SCRIMS
 // ===============================================
-
 app.post('/scrims', async (req, res) => {
     const { creator, roomName, gameId, avgRank, startsInMinutes } = req.body;
-
-    if (!creator || !roomName || !avgRank || startsInMinutes === undefined) {
-        return res.status(400).json({ error: "Informations manquantes pour la création du scrim." });
-    }
-
-    if (startsInMinutes <= 0 || startsInMinutes > 2880) { // Max 48h
-        return res.status(400).json({ error: "La durée doit être comprise entre 1 minute et 48 heures." });
-    }
+    if (!creator || !roomName || !avgRank || startsInMinutes === undefined) { return res.status(400).json({ error: "Informations manquantes pour la création du scrim." }); }
+    if (startsInMinutes <= 0 || startsInMinutes > 2880) { return res.status(400).json({ error: "La durée doit être comprise entre 1 minute et 48 heures." }); }
 
     const user = await usersCollection.findOne({ username: creator });
     if (!user) return res.status(404).json({ error: "Utilisateur créateur non trouvé." });
     
     const today = new Date().toISOString().split('T')[0];
     let dailyScrims = user.dailyScrims || 0;
-    if (user.lastActivityDate !== today) {
-        dailyScrims = 0;
-    }
-    if (!user.isPremium && dailyScrims >= 2) {
-        return res.status(403).json({ error: "Limite journalière de création de scrims atteinte." });
-    }
+    if (user.lastActivityDate !== today) { dailyScrims = 0; }
+    if (!user.isPremium && dailyScrims >= 2) { return res.status(403).json({ error: "Limite journalière de création de scrims atteinte." }); }
 
     const startTime = new Date(Date.now() + startsInMinutes * 60 * 1000);
-
     const scrimData = { creator, roomName, gameId, avgRank, startTime, players: [creator] };
     const result = await scrimsCollection.insertOne(scrimData);
     
-    await usersCollection.updateOne(
-        { _id: user._id },
-        { $set: { lastActivityDate: today }, $inc: { dailyScrims: 1 } }
-    );
+    await usersCollection.updateOne({ _id: user._id }, { $set: { lastActivityDate: today }, $inc: { dailyScrims: 1 } });
     
     res.status(201).json({ ...scrimData, _id: result.insertedId });
 });
 
 app.get('/scrims', async (req, res) => {
     try {
-        // Le tri se fait maintenant par la date de début absolue
         const allScrims = await scrimsCollection.find({}).sort({ startTime: 1 }).toArray();
         res.status(200).json(allScrims);
     } catch (error) {
