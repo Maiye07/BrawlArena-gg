@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('loggedInUsername');
         localStorage.removeItem('isPremium');
         localStorage.removeItem('userDailyStats');
-        window.location.href = 'index.html';
+        window.location.href = '/index.html'; // <<<--- ICI LA CORRECTION
     });
     
     togglePremiumButton.addEventListener('click', async () => {
@@ -301,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const deleteIcon = e.target.closest('.admin-delete-scrim');
         if (deleteIcon) {
             const scrimId = deleteIcon.dataset.scrimId;
-            if (confirm('Êtes-vous sûr de vouloir supprimer définitivement ce scrim ?')) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer définitiveement ce scrim ?')) {
                 try {
                     const response = await fetch(`${API_URL}/scrims/${scrimId}?requestingUser=${encodeURIComponent(loggedInUsername)}`, {
                         method: 'DELETE'
