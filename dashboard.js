@@ -180,16 +180,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- GESTIONNAIRES D'ÉVÉNEMENTS ---
 
+    // CORRECTION: Redirection vers premium.html en utilisant un chemin relatif simple.
     premiumButton.addEventListener('click', (e) => {
         e.preventDefault();
         window.location.href = 'premium.html';
     });
 
+    // CORRECTION: Redirection pour la déconnexion en utilisant un chemin relatif simple.
     logoutButton.addEventListener('click', () => {
         localStorage.removeItem('loggedInUsername');
         localStorage.removeItem('isPremium');
         localStorage.removeItem('userDailyStats');
-        window.location.href = '/index.html'; // <<<--- ICI LA CORRECTION
+        window.location.href = 'index.html'; 
     });
     
     togglePremiumButton.addEventListener('click', async () => {
@@ -301,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const deleteIcon = e.target.closest('.admin-delete-scrim');
         if (deleteIcon) {
             const scrimId = deleteIcon.dataset.scrimId;
-            if (confirm('Êtes-vous sûr de vouloir supprimer définitiveement ce scrim ?')) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer définitivement ce scrim ?')) {
                 try {
                     const response = await fetch(`${API_URL}/scrims/${scrimId}?requestingUser=${encodeURIComponent(loggedInUsername)}`, {
                         method: 'DELETE'
