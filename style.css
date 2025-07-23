@@ -1,3 +1,7 @@
+* {
+    box-sizing: border-box;
+}
+
 /* ===== VARIABLES & GLOBAL STYLES ===== */
 :root {
     --bg-dark: #0D0F1A;
@@ -595,8 +599,6 @@ a:hover {
     margin-top: 25px;
     color: var(--text-dark);
 }
-
-/* ===== NOUVELLES RÈGLES CI-DESSOUS ===== */
 
 /* Style pour la section "À propos" */
 #about-section h3 {
