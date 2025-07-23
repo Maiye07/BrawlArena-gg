@@ -21,13 +21,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutButton = document.getElementById('logout-button');
     const togglePremiumButton = document.getElementById('toggle-premium-button');
     
-    // MODIFICATION 1: Ajouter la section "about" à la liste des sections
     const sections = {
         home: document.getElementById('dashboard-home-section'),
         profile: document.getElementById('profile-section'),
         scrims: document.getElementById('scrims-section'),
         settings: document.getElementById('settings-section'),
-        about: document.getElementById('about-section') // Ligne ajoutée
+        about: document.getElementById('about-section')
     };
 
     const links = {
@@ -165,6 +164,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- GESTIONNAIRES D'ÉVÉNEMENTS ---
+
+    // NOUVEL ÉVÉNEMENT : Clic sur le pseudo dans la barre de navigation
+    displayUsernameInNavbar.addEventListener('click', (e) => {
+        e.preventDefault();
+        updateProfileView();
+        showSection(sections.profile);
+    });
+
     logoutButton.addEventListener('click', () => {
         localStorage.removeItem('loggedInUsername');
         localStorage.removeItem('isPremium');
@@ -270,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const deleteIcon = e.target.closest('.admin-delete-scrim');
         if (deleteIcon) {
             const scrimId = deleteIcon.dataset.scrimId;
-            if (confirm('Êtes-vous sûr de vouloir supprimer définitiveement ce scrim ?')) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer définitivement ce scrim ?')) {
                 try {
                     const response = await fetch(`${API_URL}/scrims/${scrimId}?requestingUser=${encodeURIComponent(loggedInUsername)}`, {
                         method: 'DELETE'
@@ -328,8 +335,6 @@ document.addEventListener('DOMContentLoaded', () => {
     links.profile.addEventListener('click', (e) => { e.preventDefault(); updateProfileView(); showSection(sections.profile); });
     links.settings.addEventListener('click', (e) => { e.preventDefault(); showSection(sections.settings); });
     links.tournaments.addEventListener('click', (e) => { e.preventDefault(); alert('La section Tournois est en cours de développement !'); });
-    
-    // MODIFICATION 2: Remplacer l'alerte par l'appel à showSection pour la section "about"
     if (links.about) {
         links.about.addEventListener('click', (e) => {
             e.preventDefault();
