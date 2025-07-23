@@ -374,14 +374,6 @@ a:hover {
     margin: 0;
 }
 
-.sort-controls {
-    flex-grow: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-}
-
 #scrims-list-container {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -655,7 +647,7 @@ a:hover {
 
 /* Style pour le bouton Ko-fi */
 .kofi-button {
-    background-color: #29abe0; /* Couleur officielle de Ko-fi */
+    background-color: #29abe0;
     display: inline-block;
     width: auto;
     padding-left: 20px;
@@ -674,11 +666,10 @@ a:hover {
     margin-top: 30px;
 }
 
-/* Bouton d'incitation Premium (jaune) */
 .modal-actions .premium-cta-button {
-    background-color: #FFD700; /* Jaune/Or */
+    background-color: #FFD700;
     color: var(--bg-dark);
-    text-decoration: none; /* Assure que le lien ressemble à un bouton */
+    text-decoration: none;
     display: inline-block;
     text-align: center;
 }
@@ -690,7 +681,6 @@ a:hover {
     transform: translateY(-2px);
 }
 
-/* Bouton secondaire (gris/outline) */
 .modal-actions .secondary-button {
     background-color: transparent;
     color: var(--text-dark);
@@ -706,6 +696,24 @@ a:hover {
 }
 
 /* Styles pour le panneau d'administration */
+.search-bar {
+    width: 100%;
+    padding: 10px 15px;
+    margin-bottom: 20px;
+    background-color: var(--bg-dark);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-light);
+    font-size: 1em;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-bar:focus {
+    outline: none;
+    border-color: var(--focus-border);
+    box-shadow: var(--focus-shadow);
+}
+
 .admin-user-table {
     margin-top: 25px;
     border: 1px solid var(--border-color);
@@ -735,7 +743,7 @@ a:hover {
     font-weight: bold;
 }
 .admin-user-info span {
-    color: #FFD700; /* Couleur or pour le badge Premium */
+    color: #FFD700;
     font-style: italic;
     font-weight: normal;
 }

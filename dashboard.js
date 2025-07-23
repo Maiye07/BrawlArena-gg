@@ -66,6 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const adminLinkLi = document.getElementById('admin-link-li');
     const adminUserListContainer = document.getElementById('admin-user-list-container');
+    const adminUserSearch = document.getElementById('admin-user-search');
 
     // --- FONCTIONS ---
     function updateAllCountdowns() {
@@ -205,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 usersHTML += `
                     <div class="admin-user-row">
                         <span class="admin-user-info">
-                            ${user.username}
+                            <strong>${user.username}</strong>
                             ${user.isPremium ? '<span>- 👑 Premium</span>' : ''}
                         </span>
                         <span class="admin-user-status">${statusHTML}</span>
@@ -432,6 +433,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert(`Erreur : ${error.message}`);
             }
         }
+    });
+
+    adminUserSearch.addEventListener('input', () => {
+        const searchTerm = adminUserSearch.value.toLowerCase();
+        const userRows = adminUserListContainer.querySelectorAll('.admin-user-row');
+
+        userRows.forEach(row => {
+            const username = row.querySelector('.admin-user-info').textContent.toLowerCase();
+            if (username.includes(searchTerm)) {
+                row.style.display = 'flex';
+            } else {
+                row.style.display = 'none';
+            }
+        });
     });
 
     // --- NAVIGATION ---
