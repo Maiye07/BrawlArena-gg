@@ -609,6 +609,17 @@ a:hover {
     padding-bottom: 10px;
 }
 
+#about-section h4 {
+    color: var(--text-light);
+    font-size: 1.2em;
+    margin-top: 25px;
+    margin-bottom: 5px;
+}
+
+#about-section p {
+    margin-top: 5px;
+}
+
 #about-section ul {
     list-style: none;
     padding-left: 0;
