@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const scrimsListContainer = document.getElementById('scrims-list-container');
     const showScrimModalButton = document.getElementById('show-scrim-modal-button');
     const createScrimModal = document.getElementById('create-scrim-modal');
-    const closeScrimModalButton = document.querySelector('.modal-close-button');
+    const closeScrimModalButton = createScrimModal.querySelector('.modal-close-button');
     const createScrimForm = document.getElementById('create-scrim-form');
     
     const profileUsername = document.getElementById('profile-username');
@@ -57,6 +57,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const showUsersButton = document.getElementById('show-users-button');
     const usersListContainer = document.getElementById('users-list-container');
+
+    const premiumPromptModal = document.getElementById('premium-prompt-modal');
+    const closePremiumPromptButton = premiumPromptModal.querySelector('.modal-close-button');
+    const cancelPremiumPromptButton = premiumPromptModal.querySelector('.secondary-button');
 
     // --- FONCTIONS ---
     function updateAllCountdowns() {
@@ -222,20 +226,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // MODIFICATION : Ajout d'un pop-up pour devenir premium
     showScrimModalButton.addEventListener('click', () => {
         updateProfileView();
-        // Vérifie si l'utilisateur n'est pas premium et a atteint sa limite
+        
         if (!isCurrentUserPremium && userDailyStats.dailyScrims >= 2) {
-            // Affiche une boîte de dialogue de confirmation
-            if (confirm("Vous avez atteint votre limite de 2 scrims par jour. Voulez-vous devenir Premium pour en créer de façon illimitée ?")) {
-                // Si l'utilisateur clique sur "OK", il est redirigé
-                window.location.href = 'premium.html';
-            }
-            // Empêche l'ouverture de la modale de création dans tous les cas
+            premiumPromptModal.style.display = 'flex';
             return;
         }
-        // Si la limite n'est pas atteinte, ouvre la modale normalement
+
         createScrimModal.style.display = 'flex';
     });
 
@@ -353,7 +351,23 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- MODALE ---
     closeScrimModalButton.addEventListener('click', () => { createScrimModal.style.display = 'none'; });
-    window.addEventListener('click', (e) => { if (e.target == createScrimModal) createScrimModal.style.display = 'none'; });
+    
+    window.addEventListener('click', (e) => { 
+        if (e.target == createScrimModal) {
+            createScrimModal.style.display = 'none';
+        }
+        if (e.target == premiumPromptModal) {
+            premiumPromptModal.style.display = 'none';
+        }
+    });
+
+    closePremiumPromptButton.addEventListener('click', () => {
+        premiumPromptModal.style.display = 'none';
+    });
+
+    cancelPremiumPromptButton.addEventListener('click', () => {
+        premiumPromptModal.style.display = 'none';
+    });
     
     // --- PARAMÈTRES ---
     playerIdForm.addEventListener('submit', (e) => {

@@ -665,3 +665,42 @@ a:hover {
 .kofi-button:hover {
     background-color: #1a9bc7;
 }
+
+/* Styles pour les boutons dans les modales */
+.modal-content .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 30px;
+}
+
+/* Bouton d'incitation Premium (jaune) */
+.modal-actions .premium-cta-button {
+    background-color: #FFD700; /* Jaune/Or */
+    color: var(--bg-dark);
+    text-decoration: none; /* Assure que le lien ressemble à un bouton */
+    display: inline-block;
+    text-align: center;
+}
+
+.modal-actions .premium-cta-button:hover {
+    background-color: #ffca00;
+    color: var(--bg-dark);
+    text-decoration: none;
+    transform: translateY(-2px);
+}
+
+/* Bouton secondaire (gris/outline) */
+.modal-actions .secondary-button {
+    background-color: transparent;
+    color: var(--text-dark);
+    border: 2px solid var(--border-color);
+    box-shadow: none;
+}
+
+.modal-actions .secondary-button:hover {
+    background-color: var(--border-color);
+    color: var(--text-light);
+    transform: translateY(-2px);
+    box-shadow: none;
+}
