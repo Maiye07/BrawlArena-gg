@@ -171,7 +171,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showSection(sections.profile);
     });
 
-    // MODIFICATION : Ajout d'une confirmation avant la déconnexion
     logoutButton.addEventListener('click', () => {
         if (confirm("Êtes-vous sûr de vouloir vous déconnecter ?")) {
             localStorage.removeItem('loggedInUsername');
@@ -223,12 +222,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // MODIFICATION : Ajout d'un pop-up pour devenir premium
     showScrimModalButton.addEventListener('click', () => {
         updateProfileView();
+        // Vérifie si l'utilisateur n'est pas premium et a atteint sa limite
         if (!isCurrentUserPremium && userDailyStats.dailyScrims >= 2) {
-            alert("Vous avez atteint votre limite de création de 2 scrims pour aujourd'hui.");
+            // Affiche une boîte de dialogue de confirmation
+            if (confirm("Vous avez atteint votre limite de 2 scrims par jour. Voulez-vous devenir Premium pour en créer de façon illimitée ?")) {
+                // Si l'utilisateur clique sur "OK", il est redirigé
+                window.location.href = 'premium.html';
+            }
+            // Empêche l'ouverture de la modale de création dans tous les cas
             return;
         }
+        // Si la limite n'est pas atteinte, ouvre la modale normalement
         createScrimModal.style.display = 'flex';
     });
 
@@ -279,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const deleteIcon = e.target.closest('.admin-delete-scrim');
         if (deleteIcon) {
             const scrimId = deleteIcon.dataset.scrimId;
-            if (confirm('Êtes-vous sûr de vouloir supprimer définitiveement ce scrim ?')) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer définitivement ce scrim ?')) {
                 try {
                     const response = await fetch(`${API_URL}/scrims/${scrimId}?requestingUser=${encodeURIComponent(loggedInUsername)}`, {
                         method: 'DELETE'
