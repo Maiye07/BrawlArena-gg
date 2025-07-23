@@ -165,18 +165,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- GESTIONNAIRES D'ÉVÉNEMENTS ---
 
-    // NOUVEL ÉVÉNEMENT : Clic sur le pseudo dans la barre de navigation
     displayUsernameInNavbar.addEventListener('click', (e) => {
         e.preventDefault();
         updateProfileView();
         showSection(sections.profile);
     });
 
+    // MODIFICATION : Ajout d'une confirmation avant la déconnexion
     logoutButton.addEventListener('click', () => {
-        localStorage.removeItem('loggedInUsername');
-        localStorage.removeItem('isPremium');
-        localStorage.removeItem('userDailyStats');
-        window.location.href = 'index.html';
+        if (confirm("Êtes-vous sûr de vouloir vous déconnecter ?")) {
+            localStorage.removeItem('loggedInUsername');
+            localStorage.removeItem('isPremium');
+            localStorage.removeItem('userDailyStats');
+            window.location.href = 'index.html';
+        }
     });
 
     togglePremiumButton.addEventListener('click', async () => {
@@ -277,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const deleteIcon = e.target.closest('.admin-delete-scrim');
         if (deleteIcon) {
             const scrimId = deleteIcon.dataset.scrimId;
-            if (confirm('Êtes-vous sûr de vouloir supprimer définitivement ce scrim ?')) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer définitiveement ce scrim ?')) {
                 try {
                     const response = await fetch(`${API_URL}/scrims/${scrimId}?requestingUser=${encodeURIComponent(loggedInUsername)}`, {
                         method: 'DELETE'
