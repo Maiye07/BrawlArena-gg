@@ -21,14 +21,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutButton = document.getElementById('logout-button');
     const togglePremiumButton = document.getElementById('toggle-premium-button');
     
-    // Le bouton premium est un lien <a>, il n'a pas besoin de JS pour la redirection.
-    // const premiumButton = document.getElementById('premium-button'); 
-    
+    // MODIFICATION 1: Ajouter la section "about" à la liste des sections
     const sections = {
         home: document.getElementById('dashboard-home-section'),
         profile: document.getElementById('profile-section'),
         scrims: document.getElementById('scrims-section'),
-        settings: document.getElementById('settings-section')
+        settings: document.getElementById('settings-section'),
+        about: document.getElementById('about-section') // Ligne ajoutée
     };
 
     const links = {
@@ -166,15 +165,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- GESTIONNAIRES D'ÉVÉNEMENTS ---
-
-    // Le bouton premium est un lien <a>, il n'a PAS BESOIN de JavaScript pour fonctionner.
-    // La redirection se fait via son attribut href="premium.html" dans le fichier HTML.
-
     logoutButton.addEventListener('click', () => {
         localStorage.removeItem('loggedInUsername');
         localStorage.removeItem('isPremium');
         localStorage.removeItem('userDailyStats');
-        // Redirection simple et fiable vers la page d'accueil
         window.location.href = 'index.html';
     });
 
@@ -334,7 +328,14 @@ document.addEventListener('DOMContentLoaded', () => {
     links.profile.addEventListener('click', (e) => { e.preventDefault(); updateProfileView(); showSection(sections.profile); });
     links.settings.addEventListener('click', (e) => { e.preventDefault(); showSection(sections.settings); });
     links.tournaments.addEventListener('click', (e) => { e.preventDefault(); alert('La section Tournois est en cours de développement !'); });
-    if (links.about) links.about.addEventListener('click', (e) => { e.preventDefault(); alert("Section 'À propos' en cours de construction !"); });
+    
+    // MODIFICATION 2: Remplacer l'alerte par l'appel à showSection pour la section "about"
+    if (links.about) {
+        links.about.addEventListener('click', (e) => {
+            e.preventDefault();
+            showSection(sections.about);
+        });
+    }
     
     // --- MODALE ---
     closeScrimModalButton.addEventListener('click', () => { createScrimModal.style.display = 'none'; });
