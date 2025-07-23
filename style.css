@@ -704,3 +704,74 @@ a:hover {
     transform: translateY(-2px);
     box-shadow: none;
 }
+
+/* Styles pour le panneau d'administration */
+.admin-user-table {
+    margin-top: 25px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.admin-user-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+    gap: 15px;
+}
+
+.admin-user-row:last-child {
+    border-bottom: none;
+}
+
+.admin-user-row:nth-child(odd) {
+    background-color: var(--bg-dark);
+}
+
+.admin-user-info {
+    flex: 2;
+    font-weight: bold;
+}
+.admin-user-info span {
+    color: #FFD700; /* Couleur or pour le badge Premium */
+    font-style: italic;
+    font-weight: normal;
+}
+
+.admin-user-status {
+    flex: 1.5;
+    text-align: center;
+}
+
+.admin-user-actions {
+    flex: 2;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.admin-user-actions .button {
+    padding: 6px 12px;
+    font-size: 0.9em;
+    border-radius: 6px;
+    box-shadow: none;
+}
+
+.ban-perm-btn {
+    background-color: var(--error-color);
+}
+
+.unban-btn {
+    background-color: var(--success-color);
+}
+
+.status-banned {
+    color: var(--error-color);
+    font-weight: bold;
+}
+
+.status-ok {
+    color: var(--success-color);
+}

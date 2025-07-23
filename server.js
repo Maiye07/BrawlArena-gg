@@ -32,7 +32,7 @@ app.post('/stripe-webhook', express.raw({type: 'application/json'}), async (req,
 });
 
 app.use(express.json());
-app.use(express.static(__dirname)); // Pour servir les fichiers statiques depuis la racine
+app.use(express.static(__dirname)); 
 
 const uri = process.env.MONGO_URI;
 if (!uri) throw new Error('La variable d\'environnement MONGO_URI est manquante.');
@@ -62,6 +62,18 @@ async function run() {
 run();
 
 // ===============================================
+//      MIDDLEWARE DE SÉCURITÉ
+// ===============================================
+const isAdmin = (req, res, next) => {
+    const { requestingUser } = req.query; 
+    if (requestingUser && requestingUser.toLowerCase() === 'brawlarena.gg') {
+        next();
+    } else {
+        res.status(403).json({ error: 'Accès non autorisé.' });
+    }
+};
+
+// ===============================================
 //      ROUTES API
 // ===============================================
 
@@ -74,7 +86,6 @@ app.post('/register', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis.' });
 
-    // AJOUT : Validation du format du nom d'utilisateur
     const validUsernameRegex = /^[A-Za-z0-9]+$/;
     if (!validUsernameRegex.test(username)) {
         return res.status(400).json({ error: 'Pseudo invalide.' });
@@ -83,17 +94,33 @@ app.post('/register', async (req, res) => {
     const userExists = await usersCollection.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
     if (userExists) return res.status(409).json({ error: 'Ce nom d\'utilisateur est déjà pris.' });
 
-    const newUser = { username, password, isPremium: false, dailyScrims: 0, lastActivityDate: new Date().toISOString().split('T')[0] };
+    const newUser = { 
+        username, 
+        password, 
+        isPremium: false, 
+        dailyScrims: 0, 
+        lastActivityDate: new Date().toISOString().split('T')[0],
+        isBannedPermanently: false,
+        banExpiresAt: null 
+    };
     await usersCollection.insertOne(newUser);
     res.status(201).json({ message: 'Compte créé avec succès !' });
 });
 
-// ... (le reste des routes est inchangé)
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis.' });
     const user = await usersCollection.findOne({ username, password });
     if (!user) return res.status(401).json({ error: 'Nom d\'utilisateur ou mot de passe incorrect.' });
+
+    if (user.isBannedPermanently) {
+        return res.status(403).json({ error: 'Ce compte a été banni de façon permanente.' });
+    }
+    if (user.banExpiresAt && new Date(user.banExpiresAt) > new Date()) {
+        const expiryDate = new Date(user.banExpiresAt).toLocaleString('fr-FR');
+        return res.status(403).json({ error: `Ce compte est banni temporairement jusqu'au ${expiryDate}.` });
+    }
+
     res.status(200).json({ 
         message: 'Connexion réussie !', 
         username: user.username,
@@ -102,12 +129,14 @@ app.post('/login', async (req, res) => {
         lastActivityDate: user.lastActivityDate
     });
 });
+
 app.get('/users', async (req, res) => {
     const { requestingUser } = req.query;
     if (!requestingUser || requestingUser.trim().toLowerCase() !== 'brawlarena.gg') { return res.status(403).json({ error: 'Accès réservé à l\'administrateur.' }); }
     const users = await usersCollection.find({}, { projection: { username: 1, _id: 0 } }).toArray();
     res.status(200).json(users);
 });
+
 app.post('/premium/toggle', async (req, res) => {
     const { username } = req.body;
     if (!username) return res.status(400).json({ error: "Nom d'utilisateur manquant" });
@@ -117,6 +146,7 @@ app.post('/premium/toggle', async (req, res) => {
     await usersCollection.updateOne({ username }, { $set: { isPremium: newPremiumStatus } });
     res.status(200).json({ username, isPremium: newPremiumStatus });
 });
+
 app.post('/users/statuses', async (req, res) => {
     try {
         const { usernames } = req.body;
@@ -126,6 +156,7 @@ app.post('/users/statuses', async (req, res) => {
         res.status(200).json(statusMap);
     } catch (error) { res.status(500).json({ error: "Erreur lors de la récupération des statuts." }); }
 });
+
 app.post('/create-checkout-session', async (req, res) => {
     const { username } = req.body;
     const appUrl = process.env.YOUR_APP_URL || 'http://localhost:5500';
@@ -148,6 +179,49 @@ app.post('/create-checkout-session', async (req, res) => {
     }
 });
 
+// --- Administration ---
+app.get('/admin/users', isAdmin, async (req, res) => {
+    try {
+        const users = await usersCollection.find({}, { 
+            projection: { password: 0 }
+        }).toArray();
+        res.status(200).json(users);
+    } catch (error) {
+        res.status(500).json({ error: "Erreur lors de la récupération des utilisateurs." });
+    }
+});
+
+app.post('/admin/ban', isAdmin, async (req, res) => {
+    const { usernameToBan, type, durationInDays } = req.body;
+    if (!usernameToBan || !type) {
+        return res.status(400).json({ error: 'Informations manquantes.' });
+    }
+
+    try {
+        let updateData = {};
+        if (type === 'permanent') {
+            updateData = { $set: { isBannedPermanently: true, banExpiresAt: null } };
+        } else if (type === 'temporary' && durationInDays > 0) {
+            const expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + parseInt(durationInDays));
+            updateData = { $set: { isBannedPermanently: false, banExpiresAt: expiryDate } };
+        } else if (type === 'unban') {
+            updateData = { $set: { isBannedPermanently: false, banExpiresAt: null } };
+        } else {
+            return res.status(400).json({ error: 'Type de bannissement invalide.' });
+        }
+
+        const result = await usersCollection.updateOne({ username: usernameToBan }, updateData);
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: 'Utilisateur non trouvé.' });
+        }
+        res.status(200).json({ message: `L'action sur l'utilisateur ${usernameToBan} a été appliquée.` });
+
+    } catch (error) {
+        res.status(500).json({ error: "Erreur lors de l'opération de bannissement." });
+    }
+});
+
 // --- Scrims ---
 app.post('/scrims', async (req, res) => {
     const { creator, roomName, gameId, avgRank, startsInMinutes } = req.body;
@@ -165,6 +239,7 @@ app.post('/scrims', async (req, res) => {
     await usersCollection.updateOne({ _id: user._id }, { $set: { lastActivityDate: today }, $inc: { dailyScrims: 1 } });
     res.status(201).json({ ...scrimData, _id: result.insertedId });
 });
+
 app.get('/scrims', async (req, res) => {
     try {
         const allScrims = await scrimsCollection.find({}).sort({ startTime: 1 }).toArray();
@@ -174,6 +249,7 @@ app.get('/scrims', async (req, res) => {
         res.status(500).json({ error: "Erreur lors de la récupération des scrims" });
     }
 });
+
 app.delete('/scrims/:id', async (req, res) => {
     const { requestingUser } = req.query;
     if (!requestingUser || requestingUser.trim().toLowerCase() !== 'brawlarena.gg') { return res.status(403).json({ error: 'Action non autorisée.' }); }
@@ -184,6 +260,7 @@ app.delete('/scrims/:id', async (req, res) => {
         res.status(200).json({ message: 'Scrim supprimé avec succès.' });
     } catch (error) { res.status(400).json({ error: 'ID de scrim invalide' }); }
 });
+
 app.post('/scrims/:id/join', async (req, res) => {
     try {
         const scrimId = new ObjectId(req.params.id);
@@ -196,6 +273,7 @@ app.post('/scrims/:id/join', async (req, res) => {
         res.status(200).json({ message: 'Rejoint avec succès' });
     } catch (error) { res.status(400).json({ error: 'ID de scrim invalide' }); }
 });
+
 app.post('/scrims/:id/leave', async (req, res) => {
     try {
         const scrimId = new ObjectId(req.params.id);
@@ -207,6 +285,7 @@ app.post('/scrims/:id/leave', async (req, res) => {
         res.status(200).json({ message: 'Action effectuée avec succès.' });
     } catch (error) { res.status(400).json({ error: 'ID de scrim invalide' }); }
 });
+
 app.patch('/scrims/:id/gameid', async (req, res) => {
     try {
         const scrimId = new ObjectId(req.params.id);

@@ -26,7 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
         profile: document.getElementById('profile-section'),
         scrims: document.getElementById('scrims-section'),
         settings: document.getElementById('settings-section'),
-        about: document.getElementById('about-section')
+        about: document.getElementById('about-section'),
+        admin: document.getElementById('admin-section')
     };
 
     const links = {
@@ -34,7 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
         tournaments: document.getElementById('tournaments-link'),
         scrims: document.getElementById('scrims-link'),
         settings: document.getElementById('settings-link'),
-        about: document.getElementById('about-link')
+        about: document.getElementById('about-link'),
+        admin: document.getElementById('admin-link')
     };
 
     const scrimsListContainer = document.getElementById('scrims-list-container');
@@ -61,6 +63,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const premiumPromptModal = document.getElementById('premium-prompt-modal');
     const closePremiumPromptButton = premiumPromptModal.querySelector('.modal-close-button');
     const cancelPremiumPromptButton = premiumPromptModal.querySelector('.secondary-button');
+
+    const adminLinkLi = document.getElementById('admin-link-li');
+    const adminUserListContainer = document.getElementById('admin-user-list-container');
 
     // --- FONCTIONS ---
     function updateAllCountdowns() {
@@ -165,6 +170,56 @@ document.addEventListener('DOMContentLoaded', () => {
     function showSection(sectionToShow) {
         Object.values(sections).forEach(section => { if (section) section.style.display = 'none'; });
         if (sectionToShow) sectionToShow.style.display = 'block';
+    }
+
+    async function renderAdminUsers() {
+        adminUserListContainer.innerHTML = `<p>Chargement des utilisateurs...</p>`;
+        try {
+            const response = await fetch(`${API_URL}/admin/users?requestingUser=${loggedInUsername}`);
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error || 'Erreur de chargement.');
+            }
+            
+            const users = await response.json();
+            let usersHTML = '<div class="admin-user-table">';
+            
+            users.forEach(user => {
+                if (user.username.toLowerCase() === 'brawlarena.gg') return;
+
+                let statusHTML = '<span class="status-ok">Actif</span>';
+                let actionsHTML = `
+                    <button class="button ban-temp-btn" data-username="${user.username}">Ban Temp</button>
+                    <button class="button ban-perm-btn" data-username="${user.username}">Ban Perm</button>
+                `;
+
+                if (user.isBannedPermanently) {
+                    statusHTML = '<span class="status-banned">Banni Permanent</span>';
+                    actionsHTML = `<button class="button unban-btn" data-username="${user.username}">Débannir</button>`;
+                } else if (user.banExpiresAt && new Date(user.banExpiresAt) > new Date()) {
+                    const expiryDate = new Date(user.banExpiresAt).toLocaleDateString('fr-FR');
+                    statusHTML = `<span class="status-banned">Banni (jusqu'au ${expiryDate})</span>`;
+                    actionsHTML = `<button class="button unban-btn" data-username="${user.username}">Débannir</button>`;
+                }
+
+                usersHTML += `
+                    <div class="admin-user-row">
+                        <span class="admin-user-info">
+                            ${user.username}
+                            ${user.isPremium ? '<span>- 👑 Premium</span>' : ''}
+                        </span>
+                        <span class="admin-user-status">${statusHTML}</span>
+                        <span class="admin-user-actions">${actionsHTML}</span>
+                    </div>
+                `;
+            });
+
+            usersHTML += '</div>';
+            adminUserListContainer.innerHTML = usersHTML;
+
+        } catch (error) {
+            adminUserListContainer.innerHTML = `<p class="error">${error.message}</p>`;
+        }
     }
 
     // --- GESTIONNAIRES D'ÉVÉNEMENTS ---
@@ -337,6 +392,48 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    adminUserListContainer.addEventListener('click', async (e) => {
+        const target = e.target;
+        const username = target.dataset.username;
+        if (!username) return;
+
+        let banType = null;
+        let durationInDays = 0;
+
+        if (target.classList.contains('ban-temp-btn')) {
+            const duration = prompt(`Pour combien de jours voulez-vous bannir ${username} ?`, "7");
+            if (duration && !isNaN(duration) && duration > 0) {
+                banType = 'temporary';
+                durationInDays = duration;
+            } else if (duration !== null) {
+                alert("Veuillez entrer un nombre de jours valide.");
+                return;
+            }
+        } else if (target.classList.contains('ban-perm-btn')) {
+            if (confirm(`Êtes-vous sûr de vouloir bannir ${username} de façon permanente ?`)) {
+                banType = 'permanent';
+            }
+        } else if (target.classList.contains('unban-btn')) {
+            banType = 'unban';
+        }
+
+        if (banType) {
+            try {
+                const response = await fetch(`${API_URL}/admin/ban?requestingUser=${loggedInUsername}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usernameToBan: username, type: banType, durationInDays })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error);
+                
+                renderAdminUsers();
+            } catch (error) {
+                alert(`Erreur : ${error.message}`);
+            }
+        }
+    });
+
     // --- NAVIGATION ---
     links.scrims.addEventListener('click', async (e) => { e.preventDefault(); await renderScrims(); showSection(sections.scrims); });
     links.profile.addEventListener('click', (e) => { e.preventDefault(); updateProfileView(); showSection(sections.profile); });
@@ -348,10 +445,19 @@ document.addEventListener('DOMContentLoaded', () => {
             showSection(sections.about);
         });
     }
+    if (links.admin) {
+        links.admin.addEventListener('click', (e) => {
+            e.preventDefault();
+            renderAdminUsers();
+            showSection(sections.admin);
+        });
+    }
     
-    // --- MODALE ---
+    // --- MODALES ---
     closeScrimModalButton.addEventListener('click', () => { createScrimModal.style.display = 'none'; });
-    
+    closePremiumPromptButton.addEventListener('click', () => { premiumPromptModal.style.display = 'none'; });
+    cancelPremiumPromptButton.addEventListener('click', () => { premiumPromptModal.style.display = 'none'; });
+
     window.addEventListener('click', (e) => { 
         if (e.target == createScrimModal) {
             createScrimModal.style.display = 'none';
@@ -359,14 +465,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target == premiumPromptModal) {
             premiumPromptModal.style.display = 'none';
         }
-    });
-
-    closePremiumPromptButton.addEventListener('click', () => {
-        premiumPromptModal.style.display = 'none';
-    });
-
-    cancelPremiumPromptButton.addEventListener('click', () => {
-        premiumPromptModal.style.display = 'none';
     });
     
     // --- PARAMÈTRES ---
@@ -391,6 +489,11 @@ document.addEventListener('DOMContentLoaded', () => {
     updatePremiumDisplay();
     updateProfileView();
     showSection(sections.home);
+
+    if (loggedInUsername.toLowerCase() === 'brawlarena.gg') {
+        if(adminLinkLi) adminLinkLi.style.display = 'list-item';
+    }
+
     updateUtcClock();
     setInterval(updateUtcClock, 1000);
     setInterval(updateAllCountdowns, 1000);
