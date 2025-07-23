@@ -538,26 +538,29 @@ a:hover {
     width: 100px;
 }
 
+/* MODIFICATION 1 : Dégradé conçu pour une boucle continue */
 .premium-username {
     font-weight: bold;
-    background: linear-gradient(90deg, #00BFFF, #33CFFF, #8A2BE2, #33CFFF, #00BFFF);
-    background-size: 400% auto;
+    background: linear-gradient(90deg, 
+        var(--primary-blue), 
+        var(--accent-violet), 
+        var(--primary-blue)
+    );
+    background-size: 200% auto;
     color: #fff;
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    animation: wave-animation 4s ease-in-out infinite;
+    animation: wave-animation 3s linear infinite;
 }
 
+/* MODIFICATION 2 : Animation de défilement en une seule direction */
 @keyframes wave-animation {
     0% {
         background-position: 0% 50%;
     }
-    50% {
-        background-position: 100% 50%;
-    }
     100% {
-        background-position: 0% 50%;
+        background-position: 200% 50%;
     }
 }
 
