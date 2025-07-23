@@ -435,18 +435,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    adminUserSearch.addEventListener('input', () => {
-        const searchTerm = adminUserSearch.value.toLowerCase();
-        const userRows = adminUserListContainer.querySelectorAll('.admin-user-row');
+    // MODIFICATION : Écouteur de la barre de recherche
+    adminUserSearch.addEventListener('keyup', (event) => {
+        // La recherche se déclenche uniquement lorsque la touche "Entrée" est pressée
+        if (event.key === 'Enter') {
+            const searchTerm = adminUserSearch.value.toLowerCase();
+            const userRows = adminUserListContainer.querySelectorAll('.admin-user-row');
 
-        userRows.forEach(row => {
-            const username = row.querySelector('.admin-user-info').textContent.toLowerCase();
-            if (username.includes(searchTerm)) {
-                row.style.display = 'flex';
-            } else {
-                row.style.display = 'none';
-            }
-        });
+            userRows.forEach(row => {
+                // Correction : On cible la balise <strong> pour ne chercher que dans le pseudo
+                const username = row.querySelector('.admin-user-info strong').textContent.toLowerCase();
+                
+                if (username.includes(searchTerm)) {
+                    row.style.display = 'flex';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
     });
 
     // --- NAVIGATION ---
