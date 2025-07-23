@@ -618,11 +618,14 @@ a:hover {
 
 #about-section p {
     margin-top: 5px;
+    margin-bottom: 20px;
+    line-height: 1.6;
 }
 
 #about-section ul {
     list-style: none;
     padding-left: 0;
+    margin-top: 5px;
 }
 
 #about-section li {
@@ -631,6 +634,17 @@ a:hover {
     border-radius: 6px;
     margin-bottom: 8px;
     border-left: 3px solid var(--accent-violet);
+}
+
+.mentions-list {
+    background-color: var(--bg-dark);
+    color: var(--text-dark);
+    padding: 12px 15px;
+    border-radius: 6px;
+    border-left: 3px solid var(--accent-violet);
+    line-height: 1.7;
+    margin-top: 5px;
+    font-style: italic;
 }
 
 #about-section hr {
