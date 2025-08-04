@@ -11,24 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Données de l'utilisateur stockées localement
     let isCurrentUserPremium = localStorage.getItem('isPremium') === 'true';
-    let userDailyStats = JSON.parse(localStorage.getItem('userDailyStats')) || {
-        dailyScrims: 0
-    };
-
-    // --- NOUVELLES VARIABLES GLOBALES ---
-    let currentUser = {
-        username: localStorage.getItem('loggedInUsername'),
-        isPremium: localStorage.getItem('isPremium') === 'true',
-        customization: JSON.parse(localStorage.getItem('userCustomization')) || {
-            activeColor: 'default',
-            activeBadge: 'none',
-            unlockedColors: ['default'],
-            unlockedBadges: ['none']
-        }
-    };
-
-    let selectedColor = currentUser.customization.activeColor;
-    let selectedBadge = currentUser.customization.activeBadge;
+    let userDailyStats = JSON.parse(localStorage.getItem('userDailyStats')) || { dailyScrims: 0 };
 
     // --- SÉLECTION DES ÉLÉMENTS DU DOM ---
     const utcClockElement = document.getElementById('utc-clock');
@@ -37,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const navbarPremiumBadge = document.getElementById('navbar-premium-badge');
     const logoutButton = document.getElementById('logout-button');
     const togglePremiumButton = document.getElementById('toggle-premium-button');
-
+    
     const sections = {
         home: document.getElementById('dashboard-home-section'),
         profile: document.getElementById('profile-section'),
@@ -61,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const createScrimModal = document.getElementById('create-scrim-modal');
     const closeScrimModalButton = createScrimModal.querySelector('.modal-close-button');
     const createScrimForm = document.getElementById('create-scrim-form');
-
+    
     const profileUsername = document.getElementById('profile-username');
     const profilePlayerId = document.getElementById('profile-player-id');
     const profileTournamentsAttended = document.getElementById('profile-tournaments-attended');
@@ -85,13 +68,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminUserListContainer = document.getElementById('admin-user-list-container');
     const adminUserSearch = document.getElementById('admin-user-search');
 
-    const profileUsernamePlaceholder = document.getElementById('profile-username-placeholder');
-    const profileUserDisplay = document.getElementById('profile-user-display');
-    const colorSelectionGrid = document.getElementById('color-selection-grid');
-    const badgeSelectionGrid = document.getElementById('badge-selection-grid');
-    const saveCustomizationButton = document.getElementById('save-customization-button');
-    const customizationMessage = document.getElementById('customization-message');
-
     // --- FONCTIONS ---
     function updateAllCountdowns() {
         const countdownElements = document.querySelectorAll('.countdown-timer');
@@ -110,30 +86,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ===============================================
-    //      NOUVELLE FONCTION DE RENDU UNIVERSELLE
-    // ===============================================
-    function renderUserDisplay(username, customization) {
-        // Définit les chemins vers les images des badges
-        const badgeMap = {
-            'none': '', // Pas d'image
-            'premium': 'images/Certif.png',
-            'creator': 'images/crown.png' // Exemple pour plus tard
-            // Ajoutez d'autres badges ici
-        };
-
-        const badgeUrl = badgeMap[customization.activeBadge] || '';
-
-        const badgeHTML = badgeUrl ?
-            `<img src="${badgeUrl}" alt="Badge" class="player-badge badge-${customization.activeBadge}">` :
-            '<span class="player-badge badge-none"></span>';
-
-        const usernameHTML = `<span class="username-text-display username-color-${customization.activeColor}">${username}</span>`;
-
-        return `${badgeHTML}${usernameHTML}`;
-    }
-
-
     async function renderScrims() {
         try {
             const scrimsResponse = await fetch(`${API_URL}/scrims`);
@@ -144,14 +96,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 scrims.forEach(scrim => scrim.players.forEach(player => allUsernames.add(player)));
                 const statusesResponse = await fetch(`${API_URL}/users/statuses`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        usernames: Array.from(allUsernames)
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usernames: Array.from(allUsernames) })
                 });
-                const userStatusMap = await statusesResponse.json();
+                const premiumStatus = await statusesResponse.json();
                 scrimsListContainer.innerHTML = '';
                 scrims.forEach(scrim => {
                     const card = document.createElement('div');
@@ -161,18 +109,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         adminDeleteIcon = `<span class="admin-delete-scrim" data-scrim-id="${scrim._id}" title="Supprimer le scrim">🗑️</span>`;
                     }
                     const playersHTML = scrim.players.map(player => {
-                        const playerData = userStatusMap[player] || {
-                            activeColor: 'default',
-                            activeBadge: 'none'
-                        };
-
-                        // On vérifie si le joueur est le créateur
-                        if (player === scrim.creator) {
-                            playerData.activeBadge = 'creator'; // On force l'affichage du badge créateur
-                        }
-
-                        const playerDisplayHTML = renderUserDisplay(player, playerData);
-                        return `<li>${playerDisplayHTML}</li>`;
+                        const isPlayerPremium = premiumStatus[player] || false;
+                        const isPlayerCreator = player === scrim.creator;
+                        const badges = isPlayerCreator ? `<img src="images/crown.png" alt="Créateur" class="creator-crown">` : '';
+                        const playerNameHTML = `<span class="${isPlayerPremium ? 'premium-username' : ''}">${player}</span>`;
+                        return `<li>${playerNameHTML} ${badges}</li>`;
                     }).join('');
                     const isUserInScrim = scrim.players.includes(loggedInUsername);
                     const isCreator = loggedInUsername === scrim.creator;
@@ -207,22 +148,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Met à jour l'affichage dans la navbar et sur la page de profil
-    function updateGlobalUserDisplay() {
-        const userDisplayHTML = renderUserDisplay(currentUser.username, currentUser.customization);
-
-        // Navbar
-        displayUsernameInNavbar.innerHTML = userDisplayHTML;
-        navbarPremiumBadge.style.display = 'none'; // On n'utilise plus l'ancien badge séparé
-
-        // Page Profil (si elle est affichée)
-        if (sections.profile.style.display === 'block') {
-            profileUsernamePlaceholder.textContent = currentUser.username;
-            profileUserDisplay.innerHTML = renderUserDisplay(currentUser.username, currentUser.customization);
-        }
-    }
-
-
     function updatePremiumDisplay() {
         navbarPremiumBadge.innerHTML = isCurrentUserPremium ? `<img src="images/Certif.png" alt="Premium" class="premium-badge">` : '';
         displayUsernameInNavbar.classList.toggle('premium-username', isCurrentUserPremium);
@@ -238,74 +163,13 @@ document.addEventListener('DOMContentLoaded', () => {
         profileDailyScrims.textContent = isCurrentUserPremium ? 'Illimité ✨' : Math.max(0, 2 - userDailyStats.dailyScrims);
     }
 
-
-    // Affiche les options de personnalisation dans le profil
-    function renderProfileCustomization() {
-        // --- RENDU DES COULEURS ---
-        colorSelectionGrid.innerHTML = '';
-        const availableColors = { // Base de données des couleurs
-            'default': 'var(--text-light)',
-            'premium-gradient': 'linear-gradient(90deg, var(--primary-blue), var(--accent-violet))',
-            'supporter-gold': '#FFD700'
-        };
-
-        currentUser.customization.unlockedColors.forEach(colorId => {
-            if (colorId === 'premium-gradient' && !currentUser.isPremium) return; // Ne pas afficher si non premium
-
-            const colorValue = availableColors[colorId];
-            const swatch = document.createElement('div');
-            swatch.className = 'color-swatch';
-            swatch.dataset.colorId = colorId;
-            swatch.style.background = colorValue;
-            if (selectedColor === colorId) {
-                swatch.classList.add('selected');
-            }
-            swatch.addEventListener('click', () => {
-                selectedColor = colorId;
-                renderProfileCustomization(); // Re-render pour mettre à jour la sélection
-            });
-            colorSelectionGrid.appendChild(swatch);
-        });
-
-        // --- RENDU DES BADGES ---
-        badgeSelectionGrid.innerHTML = '';
-        const availableBadges = { // Base de données des badges
-            'none': 'images/cancel.png', // Une icône pour "aucun"
-            'premium': 'images/Certif.png'
-        };
-
-        currentUser.customization.unlockedBadges.forEach(badgeId => {
-            if (badgeId === 'premium' && !currentUser.isPremium) return;
-
-            const badgeContainer = document.createElement('div');
-            badgeContainer.className = 'badge-icon-container';
-            badgeContainer.dataset.badgeId = badgeId;
-
-            const img = document.createElement('img');
-            img.src = availableBadges[badgeId];
-            img.alt = `Badge ${badgeId}`;
-            badgeContainer.appendChild(img);
-
-            if (selectedBadge === badgeId) {
-                badgeContainer.classList.add('selected');
-            }
-            badgeContainer.addEventListener('click', () => {
-                selectedBadge = badgeId;
-                renderProfileCustomization();
-            });
-            badgeSelectionGrid.appendChild(badgeContainer);
-        });
-    }
-
     function updateUtcClock() {
         const now = new Date();
         utcClockElement.textContent = `UTC ${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}:${String(now.getUTCSeconds()).padStart(2, '0')}`;
     }
 
     function showSection(sectionToShow) {
-        Object.values(sections).forEach(section => {
-            if (section) section.style.display = 'none';
-        });
+        Object.values(sections).forEach(section => { if (section) section.style.display = 'none'; });
         if (sectionToShow) sectionToShow.style.display = 'block';
     }
 
@@ -317,10 +181,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const errData = await response.json();
                 throw new Error(errData.error || 'Erreur de chargement.');
             }
-
+            
             const users = await response.json();
             let usersHTML = '<div class="admin-user-table">';
-
+            
             users.forEach(user => {
                 if (user.username.toLowerCase() === 'brawlarena.gg') return;
 
@@ -380,12 +244,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(`${API_URL}/premium/toggle`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    username: loggedInUsername
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: loggedInUsername })
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error);
@@ -414,9 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             let usersHTML = '<h3>Comptes enregistrés :</h3><ul>';
-            users.forEach(user => {
-                usersHTML += `<li>${user.username}</li>`;
-            });
+            users.forEach(user => { usersHTML += `<li>${user.username}</li>`; });
             usersHTML += '</ul>';
             usersListContainer.innerHTML = usersHTML;
         } catch (error) {
@@ -426,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     showScrimModalButton.addEventListener('click', () => {
         updateProfileView();
-
+        
         if (!isCurrentUserPremium && userDailyStats.dailyScrims >= 2) {
             premiumPromptModal.style.display = 'flex';
             return;
@@ -455,13 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             submitButton.disabled = true;
             submitButton.textContent = 'Création...';
-            const response = await fetch(`${API_URL}/scrims`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(scrimData)
-            });
+            const response = await fetch(`${API_URL}/scrims`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(scrimData) });
             const data = await response.json();
             if (!response.ok) {
                 throw new Error(data.error || "Erreur de création");
@@ -524,36 +376,12 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             let response;
             if (button.classList.contains('join-button')) {
-                response = await fetch(`${API_URL}/scrims/${scrimId}/join`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        username: loggedInUsername
-                    })
-                });
+                response = await fetch(`${API_URL}/scrims/${scrimId}/join`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: loggedInUsername }) });
             } else if (button.classList.contains('leave-button')) {
-                response = await fetch(`${API_URL}/scrims/${scrimId}/leave`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        username: loggedInUsername
-                    })
-                });
+                response = await fetch(`${API_URL}/scrims/${scrimId}/leave`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: loggedInUsername }) });
             } else if (button.classList.contains('save-id-button')) {
                 const newId = button.parentElement.querySelector('.edit-id-input').value.trim();
-                response = await fetch(`${API_URL}/scrims/${scrimId}/gameid`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        gameId: newId
-                    })
-                });
+                response = await fetch(`${API_URL}/scrims/${scrimId}/gameid`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gameId: newId }) });
             }
             if (response && !response.ok) {
                 const errorData = await response.json();
@@ -594,18 +422,12 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const response = await fetch(`${API_URL}/admin/ban?requestingUser=${loggedInUsername}`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        usernameToBan: username,
-                        type: banType,
-                        durationInDays
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usernameToBan: username, type: banType, durationInDays })
                 });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error);
-
+                
                 renderAdminUsers();
             } catch (error) {
                 alert(`Erreur : ${error.message}`);
@@ -623,7 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
             userRows.forEach(row => {
                 // Correction : On cible la balise <strong> pour ne chercher que dans le pseudo
                 const username = row.querySelector('.admin-user-info strong').textContent.toLowerCase();
-
+                
                 if (username.includes(searchTerm)) {
                     row.style.display = 'flex';
                 } else {
@@ -634,31 +456,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- NAVIGATION ---
-    links.scrims.addEventListener('click', async (e) => {
-        e.preventDefault();
-        await renderScrims();
-        showSection(sections.scrims);
-    });
-
-    links.profile.addEventListener('click', (e) => {
-        e.preventDefault();
-        // Mettre à jour les variables de sélection actuelles au cas où l'utilisateur quitte sans sauvegarder
-        selectedColor = currentUser.customization.activeColor;
-        selectedBadge = currentUser.customization.activeBadge;
-
-        updateGlobalUserDisplay(); // Met à jour l'affichage principal du profil
-        renderProfileCustomization(); // Affiche les options de personnalisation
-        showSection(sections.profile);
-    });
-
-    links.settings.addEventListener('click', (e) => {
-        e.preventDefault();
-        showSection(sections.settings);
-    });
-    links.tournaments.addEventListener('click', (e) => {
-        e.preventDefault();
-        alert('La section Tournois est en cours de développement !');
-    });
+    links.scrims.addEventListener('click', async (e) => { e.preventDefault(); await renderScrims(); showSection(sections.scrims); });
+    links.profile.addEventListener('click', (e) => { e.preventDefault(); updateProfileView(); showSection(sections.profile); });
+    links.settings.addEventListener('click', (e) => { e.preventDefault(); showSection(sections.settings); });
+    links.tournaments.addEventListener('click', (e) => { e.preventDefault(); alert('La section Tournois est en cours de développement !'); });
     if (links.about) {
         links.about.addEventListener('click', (e) => {
             e.preventDefault();
@@ -672,19 +473,13 @@ document.addEventListener('DOMContentLoaded', () => {
             showSection(sections.admin);
         });
     }
-
+    
     // --- MODALES ---
-    closeScrimModalButton.addEventListener('click', () => {
-        createScrimModal.style.display = 'none';
-    });
-    closePremiumPromptButton.addEventListener('click', () => {
-        premiumPromptModal.style.display = 'none';
-    });
-    cancelPremiumPromptButton.addEventListener('click', () => {
-        premiumPromptModal.style.display = 'none';
-    });
+    closeScrimModalButton.addEventListener('click', () => { createScrimModal.style.display = 'none'; });
+    closePremiumPromptButton.addEventListener('click', () => { premiumPromptModal.style.display = 'none'; });
+    cancelPremiumPromptButton.addEventListener('click', () => { premiumPromptModal.style.display = 'none'; });
 
-    window.addEventListener('click', (e) => {
+    window.addEventListener('click', (e) => { 
         if (e.target == createScrimModal) {
             createScrimModal.style.display = 'none';
         }
@@ -692,7 +487,7 @@ document.addEventListener('DOMContentLoaded', () => {
             premiumPromptModal.style.display = 'none';
         }
     });
-
+    
     // --- PARAMÈTRES ---
     playerIdForm.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -709,58 +504,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    saveCustomizationButton.addEventListener('click', async () => {
-        saveCustomizationButton.disabled = true;
-        saveCustomizationButton.textContent = "Sauvegarde...";
-        customizationMessage.textContent = "";
-
-        try {
-            const response = await fetch(`${API_URL}/users/customize`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    username: currentUser.username,
-                    newColor: selectedColor,
-                    newBadge: selectedBadge
-                })
-            });
-
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.error || "Une erreur est survenue.");
-            }
-
-            // Mettre à jour les données locales
-            currentUser.customization.activeColor = selectedColor;
-            currentUser.customization.activeBadge = selectedBadge;
-            localStorage.setItem('userCustomization', JSON.stringify(currentUser.customization));
-
-            customizationMessage.textContent = data.message;
-            customizationMessage.className = 'success';
-
-            updateGlobalUserDisplay(); // Mettre à jour l'affichage partout
-
-        } catch (error) {
-            customizationMessage.textContent = error.message;
-            customizationMessage.className = 'error';
-        } finally {
-            saveCustomizationButton.disabled = false;
-            saveCustomizationButton.textContent = "Sauvegarder les changements";
-        }
-    });
-
-
     // --- INITIALISATION DE LA PAGE ---
     usernameDisplay.textContent = loggedInUsername;
     displayUsernameInNavbar.textContent = loggedInUsername;
-    updateGlobalUserDisplay();
+    updatePremiumDisplay();
     updateProfileView();
     showSection(sections.home);
 
     if (loggedInUsername.toLowerCase() === 'brawlarena.gg') {
-        if (adminLinkLi) adminLinkLi.style.display = 'list-item';
+        if(adminLinkLi) adminLinkLi.style.display = 'list-item';
     }
 
     updateUtcClock();
