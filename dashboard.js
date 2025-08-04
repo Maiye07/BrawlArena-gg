@@ -327,22 +327,16 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Personnalisation
     if (saveCustomizationButton) {
+        // CORRECTION APPLIQUÉE ICI
         saveCustomizationButton.addEventListener('click', async () => {
-            // Récupère l'élément de couleur sélectionné
-            const selectedColorEl = colorSelectionGrid.querySelector('.color-swatch.selected');
-            // Récupère l'élément de badge sélectionné
-            const selectedBadgeEl = badgeSelectionGrid.querySelector('.badge-icon-container.selected');
-    
-            // Détermine la nouvelle couleur : celle sélectionnée, ou l'actuelle par défaut.
-            const newColor = selectedColorEl ? selectedColorEl.dataset.colorId : userCustomization.activeColor;
-            // Détermine le nouveau badge : celui sélectionné, ou 'none' si aucun n'est sélectionné.
-            const newBadge = selectedBadgeEl ? selectedBadgeEl.dataset.badgeId : 'none';
-    
+            const newColor = colorSelectionGrid.querySelector('.selected')?.dataset.colorId || userCustomization.activeColor;
+            const newBadge = badgeSelectionGrid.querySelector('.selected')?.dataset.badgeId || 'none';
+
             try {
                 saveCustomizationButton.disabled = true;
                 saveCustomizationButton.textContent = "Sauvegarde...";
                 
-                // Le corps de la requête est maintenant correctement et robustement rempli
+                // Le `body` de la requête est maintenant correctement rempli
                 const response = await fetch(`${API_URL}/users/customize`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -355,7 +349,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const data = await response.json();
                 if (!response.ok) {
-                    // Si le serveur renvoie une erreur (4xx ou 5xx), on l'affiche
+                    // Si le serveur renvoie une erreur, on l'affiche
                     throw new Error(data.error || "Une erreur inconnue est survenue.");
                 }
                 
@@ -363,19 +357,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 userCustomization.activeColor = newColor;
                 userCustomization.activeBadge = newBadge;
                 localStorage.setItem('userCustomization', JSON.stringify(userCustomization));
-    
-                // Mettre à jour l'affichage
+
                 updateUserDisplay(loggedInUsername, userCustomization);
                 updateProfileView();
                 
                 customizationMessage.textContent = data.message;
                 customizationMessage.className = 'success';
-    
             } catch (error) {
-                // `error.message` contient maintenant l'erreur précise du serveur ou du réseau
+                // `error.message` contient maintenant l'erreur précise du serveur
                 customizationMessage.textContent = `Erreur : ${error.message}`;
                 customizationMessage.className = 'error';
-    
             } finally {
                 saveCustomizationButton.disabled = false;
                 saveCustomizationButton.textContent = "Sauvegarder les changements";
@@ -395,11 +386,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const target = e.target.closest('.badge-icon-container');
         if (target && !target.classList.contains('locked')) {
             const currentSelected = badgeSelectionGrid.querySelector('.selected');
-            if (currentSelected === target) {
-                // Si l'utilisateur clique sur le badge déjà sélectionné, on le désélectionne
-                currentSelected.classList.remove('selected');
-            } else {
-                // Sinon, on met à jour la sélection
+            if (currentSelected === target) currentSelected.classList.remove('selected');
+            else {
                 currentSelected?.classList.remove('selected');
                 target.classList.add('selected');
             }

@@ -184,6 +184,7 @@ app.post('/users/statuses', async (req, res) => {
 });
 
 // --- NOUVELLE ROUTE POUR LA PERSONNALISATION ---
+// --- NOUVELLE ROUTE POUR LA PERSONNALISATION (Version Corrigée) ---
 app.post('/users/customize', async (req, res) => {
     const { username, newColor, newBadge } = req.body;
     if (!username || !newColor || !newBadge) {
@@ -196,9 +197,14 @@ app.post('/users/customize', async (req, res) => {
             return res.status(404).json({ error: "Utilisateur non trouvé." });
         }
 
-        // Sécurité : Vérifier que l'utilisateur possède bien les éléments qu'il veut équiper
-        const hasColor = user.unlockedColors.includes(newColor);
-        const hasBadge = user.unlockedBadges.includes(newBadge);
+        // CORRECTION : On s'assure que les tableaux existent avant de les utiliser.
+        // Si user.unlockedColors n'existe pas, on utilise un tableau vide [].
+        const userUnlockedColors = user.unlockedColors || [];
+        const userUnlockedBadges = user.unlockedBadges || [];
+
+        // On utilise maintenant les variables sécurisées.
+        const hasColor = userUnlockedColors.includes(newColor);
+        const hasBadge = userUnlockedBadges.includes(newBadge);
 
         if (!hasColor || !hasBadge) {
             return res.status(403).json({ error: "Vous ne possédez pas ces objets de personnalisation." });
@@ -209,6 +215,7 @@ app.post('/users/customize', async (req, res) => {
             return res.status(403).json({ error: "Vous devez être Premium pour utiliser cet objet." });
         }
 
+        // La mise à jour reste la même
         await usersCollection.updateOne(
             { username },
             { $set: { activeColor: newColor, activeBadge: newBadge } }
@@ -217,6 +224,8 @@ app.post('/users/customize', async (req, res) => {
         res.status(200).json({ message: "Profil mis à jour avec succès !" });
 
     } catch (error) {
+        // En cas d'autre erreur imprévue, on la logue sur le serveur pour faciliter le débogage
+        console.error("Erreur dans /users/customize:", error);
         res.status(500).json({ error: "Erreur lors de la mise à jour du profil." });
     }
 });
