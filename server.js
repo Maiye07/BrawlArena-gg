@@ -24,15 +24,14 @@ app.post('/stripe-webhook', express.raw({type: 'application/json'}), async (req,
         const session = event.data.object;
         const username = session.metadata.username;
         if (username) {
-            console.log(`Paiement réussi pour: ${username}. Mise à jour du statut premium.`);
-            // Modification pour ajouter les objets de personnalisation déverrouillés
+            console.log(`Paiement réussi pour: ${username}. Mise à jour du statut premium et des objets.`);
             await usersCollection.updateOne(
                 { username: username }, 
                 { 
                     $set: { isPremium: true },
                     $addToSet: { 
-                        unlockedColors: 'supporter-gold',
-                        unlockedBadges: 'supporter-gold'
+                        unlockedColors: { $each: ['premium-gradient', 'supporter-gold'] },
+                        unlockedBadges: { $each: ['premium', 'supporter-gold'] }
                     }
                 }
             );
@@ -114,8 +113,9 @@ app.post('/register', async (req, res) => {
         banExpiresAt: null,
         activeColor: 'default',
         activeBadge: 'none',
-        unlockedColors: ['default', 'premium-gradient'],
-        unlockedBadges: ['none', 'premium']
+        // Correction : Seuls les objets par défaut sont déverrouillés au départ
+        unlockedColors: ['default'],
+        unlockedBadges: ['none']
     };
     await usersCollection.insertOne(newUser);
     res.status(201).json({ message: 'Compte créé avec succès !' });
@@ -166,20 +166,18 @@ app.post('/premium/toggle', async (req, res) => {
 
     const newPremiumStatus = !user.isPremium;
 
-    // Si l'utilisateur devient Premium, on ajoute les objets à ses listes
     if (newPremiumStatus) {
         await usersCollection.updateOne(
             { username },
             {
                 $set: { isPremium: newPremiumStatus },
                 $addToSet: {
-                    unlockedColors: 'premium-gradient',
-                    unlockedBadges: 'premium'
+                    unlockedColors: { $each: ['premium-gradient', 'supporter-gold'] },
+                    unlockedBadges: { $each: ['premium', 'supporter-gold'] }
                 }
             }
         );
     } else {
-        // Si l'utilisateur n'est plus Premium, on met simplement le statut à jour
         await usersCollection.updateOne({ username }, { $set: { isPremium: newPremiumStatus } });
     }
 
@@ -230,7 +228,7 @@ app.post('/users/customize', async (req, res) => {
             return res.status(403).json({ error: "Vous ne possédez pas ces objets de personnalisation." });
         }
         
-        if ((newColor === 'premium-gradient' || newBadge === 'premium') && !user.isPremium) {
+        if ((newColor.includes('premium') || newColor.includes('supporter-gold') || newBadge.includes('premium') || newBadge.includes('supporter-gold')) && !user.isPremium) {
             return res.status(403).json({ error: "Vous devez être Premium pour utiliser cet objet." });
         }
 
