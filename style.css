@@ -169,9 +169,7 @@ body {
     overflow-y: auto;
 }
 
-.welcome-container,
-.auth-container,
-.premium-container {
+.auth-container {
     background-color: var(--bg-light);
     padding: 40px;
     border-radius: 12px;
@@ -180,32 +178,7 @@ body {
     width: 90%;
     margin: 50px auto;
     color: var(--text-light);
-}
-
-.welcome-container {
-    max-width: 650px;
-}
-
-.auth-container {
     max-width: 450px;
-}
-
-.premium-container {
-    max-width: 600px;
-}
-
-.welcome-container h1 {
-    font-size: 3em;
-    color: var(--primary-blue);
-    margin-bottom: 20px;
-    text-shadow: 2px 2px 5px rgba(0, 191, 255, 0.4);
-}
-
-.welcome-container p {
-    font-size: 1.3em;
-    color: var(--text-dark);
-    line-height: 1.6;
-    max-width: 80%;
 }
 
 h1, h2 {
@@ -538,7 +511,6 @@ a:hover {
     width: 100px;
 }
 
-/* MODIFICATION 1 : Dégradé conçu pour une boucle continue */
 .premium-username {
     font-weight: bold;
     background: linear-gradient(90deg, 
@@ -554,7 +526,6 @@ a:hover {
     animation: wave-animation 3s linear infinite;
 }
 
-/* MODIFICATION 2 : Animation de défilement en une seule direction */
 @keyframes wave-animation {
     0% {
         background-position: 0% 50%;
@@ -562,40 +533,6 @@ a:hover {
     100% {
         background-position: 200% 50%;
     }
-}
-
-.premium-container .subtitle {
-    font-size: 1.2em;
-    color: var(--text-dark);
-    margin-bottom: 30px;
-}
-
-.benefits-list {
-    list-style: none;
-    padding: 0;
-    margin: 30px 0;
-    text-align: left;
-    display: inline-block;
-}
-
-.benefits-list li {
-    font-size: 1.1em;
-    margin-bottom: 15px;
-}
-
-.price-display {
-    font-size: 1.3em;
-    margin: 30px 0;
-    padding: 15px;
-    background-color: var(--bg-dark);
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-}
-
-.back-link {
-    display: block;
-    margin-top: 25px;
-    color: var(--text-dark);
 }
 
 /* Style pour la section "À propos" */
@@ -651,19 +588,6 @@ a:hover {
     margin: 30px 0;
 }
 
-/* Style pour le bouton Ko-fi */
-.kofi-button {
-    background-color: #29abe0;
-    display: inline-block;
-    width: auto;
-    padding-left: 20px;
-    padding-right: 20px;
-}
-
-.kofi-button:hover {
-    background-color: #1a9bc7;
-}
-
 /* Styles pour les boutons dans les modales */
 .modal-content .modal-actions {
     display: flex;
@@ -673,9 +597,9 @@ a:hover {
 }
 
 .modal-actions .premium-cta-button {
-    background-color: #FFD700;
+    background-color: #FFD700; /* Jaune/Or */
     color: var(--bg-dark);
-    text-decoration: none;
+    text-decoration: none; /* Assure que le lien ressemble à un bouton */
     display: inline-block;
     text-align: center;
 }
@@ -788,4 +712,193 @@ a:hover {
 
 .status-ok {
     color: var(--success-color);
+}
+
+/* STYLES POUR LA PAGE D'ACCUEIL (INDEX.HTML) */
+
+.landing-page {
+    width: 100%;
+    color: var(--text-light);
+}
+
+/* Section Héros */
+.hero-section {
+    text-align: center;
+    padding: 80px 20px;
+    background-color: var(--bg-light);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.hero-section h1 {
+    font-size: 3em;
+    margin-bottom: 15px;
+    text-shadow: 2px 2px 8px rgba(0, 191, 255, 0.5);
+}
+
+.hero-section .subtitle {
+    font-size: 1.4em;
+    color: var(--text-dark);
+    max-width: 600px;
+    margin: 0 auto 30px auto;
+}
+
+/* Section des fonctionnalités */
+.features-section {
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.features-section h2 {
+    font-size: 2.5em;
+    margin-bottom: 40px;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 30px;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.feature-card {
+    background-color: var(--bg-light);
+    padding: 30px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.feature-icon {
+    font-size: 3em;
+    margin-bottom: 15px;
+}
+
+.feature-card h3 {
+    color: var(--primary-blue);
+    font-size: 1.5em;
+    margin-bottom: 10px;
+}
+
+/* Section d'appel à la communauté */
+.community-callout {
+    background-color: var(--bg-light);
+    text-align: center;
+    padding: 60px 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.community-callout h2 {
+    font-size: 2.5em;
+    margin-bottom: 15px;
+}
+
+.community-callout p {
+    max-width: 500px;
+    margin: 0 auto 30px auto;
+}
+
+.social-links-landing {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+/* Pied de page */
+.footer {
+    text-align: center;
+    padding: 20px;
+    margin-top: auto; /* Pousse le footer en bas de la page */
+    background-color: var(--bg-light);
+    border-top: 1px solid var(--border-color);
+    color: var(--text-dark);
+}
+
+/* ===== PREMIUM PAGE STYLES ===== */
+
+.premium-container {
+    max-width: 650px;
+    margin: 50px auto;
+    background-color: var(--bg-light);
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    border-top: 4px solid var(--accent-violet);
+}
+
+.premium-container h1 {
+    font-size: 2.8em;
+    margin-bottom: 10px;
+    background: linear-gradient(90deg, var(--primary-blue), #FFD700, var(--accent-violet));
+    background-size: 200% auto;
+    color: #fff;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: wave-animation 4s linear infinite;
+}
+
+.premium-container .subtitle {
+    font-size: 1.2em;
+    color: var(--text-dark);
+    margin-bottom: 40px;
+}
+
+.benefits-list {
+    list-style: none;
+    padding: 0;
+    text-align: left;
+    margin: 0 auto 40px auto;
+    max-width: 500px;
+}
+
+.benefits-list li {
+    font-size: 1.15em;
+    padding: 15px 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.benefits-list li:first-child {
+    border-top: 1px solid var(--border-color);
+}
+
+.price-display {
+    background-color: var(--bg-dark);
+    border: 1px solid var(--border-color);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+}
+
+.price-display strong {
+    font-size: 2em;
+    color: var(--primary-blue);
+    display: block;
+}
+
+#confirm-purchase-button {
+    font-size: 1.3em;
+    padding: 15px 30px;
+    width: 100%;
+    background: linear-gradient(90deg, var(--primary-blue), var(--hover-blue-light));
+    box-shadow: var(--glow-shadow-lg);
+    margin-bottom: 20px;
+}
+
+.back-link {
+    display: inline-block;
+    color: var(--text-dark);
+    font-size: 1em;
+    transition: color 0.2s ease;
+}
+
+.back-link:hover {
+    color: var(--text-light);
+    text-decoration: underline;
 }
