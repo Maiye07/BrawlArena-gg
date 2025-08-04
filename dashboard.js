@@ -58,7 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeScrimModalButton = createScrimModal.querySelector('.modal-close-button');
     const createScrimForm = document.getElementById('create-scrim-form');
     
-    // Éléments du Profil - CORRECTION APPLIQUÉE
     const profileUsernamePlaceholder = document.getElementById('profile-username-placeholder');
     const profileUserDisplay = document.getElementById('profile-user-display');
     const profileDailyScrims = document.getElementById('profile-daily-scrims');
@@ -103,7 +102,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function renderScrims() {
-        // ... (code de la fonction renderScrims, identique à la réponse précédente)
         try {
             const scrimsResponse = await fetch(`${API_URL}/scrims`);
             if (!scrimsResponse.ok) throw new Error('Échec de la récupération des scrims.');
@@ -319,8 +317,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error(data.error);
             isCurrentUserPremium = data.isPremium;
             localStorage.setItem('isPremium', isCurrentUserPremium);
-            updateUserDisplay(loggedInUsername, userCustomization); // Met à jour la navbar
-            updateProfileView(); // Met à jour l'affichage du profil
+            updateUserDisplay(loggedInUsername, userCustomization);
+            updateProfileView();
             alert(`Statut Premium ${isCurrentUserPremium ? 'activé' : 'désactivé'} !`);
         } catch (error) {
             alert(`Erreur: ${error.message}`);
@@ -329,32 +327,49 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Personnalisation
     if (saveCustomizationButton) {
+        // CORRECTION APPLIQUÉE ICI
         saveCustomizationButton.addEventListener('click', async () => {
             const newColor = colorSelectionGrid.querySelector('.selected')?.dataset.colorId || userCustomization.activeColor;
             const newBadge = badgeSelectionGrid.querySelector('.selected')?.dataset.badgeId || 'none';
+
             try {
                 saveCustomizationButton.disabled = true;
                 saveCustomizationButton.textContent = "Sauvegarde...";
+                
+                // Le `body` de la requête est maintenant correctement rempli
                 const response = await fetch(`${API_URL}/users/customize`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: loggedInUsername, newColor, newBadge })
+                    body: JSON.stringify({ 
+                        username: loggedInUsername, 
+                        newColor: newColor, 
+                        newBadge: newBadge 
+                    })
                 });
+                
                 const data = await response.json();
-                if (!response.ok) throw new Error(data.error);
+                if (!response.ok) {
+                    // Si le serveur renvoie une erreur, on l'affiche
+                    throw new Error(data.error || "Une erreur inconnue est survenue.");
+                }
+                
+                // Mettre à jour les données locales si la sauvegarde a réussi
                 userCustomization.activeColor = newColor;
                 userCustomization.activeBadge = newBadge;
                 localStorage.setItem('userCustomization', JSON.stringify(userCustomization));
+
                 updateUserDisplay(loggedInUsername, userCustomization);
                 updateProfileView();
+                
                 customizationMessage.textContent = data.message;
                 customizationMessage.className = 'success';
             } catch (error) {
-                customizationMessage.textContent = error.message;
+                // `error.message` contient maintenant l'erreur précise du serveur
+                customizationMessage.textContent = `Erreur : ${error.message}`;
                 customizationMessage.className = 'error';
             } finally {
                 saveCustomizationButton.disabled = false;
-                saveCustomizationButton.textContent = "Sauvegarder";
+                saveCustomizationButton.textContent = "Sauvegarder les changements";
             }
         });
     }
@@ -441,7 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const textSpan = container.querySelector('.game-id-text');
                 container.innerHTML = `<input type="text" class="edit-id-input" value="${textSpan.textContent === 'Non défini' ? '' : textSpan.textContent}" placeholder="ID"><button class="save-id-button" data-scrim-id="${container.dataset.scrimId}"><img src="images/confirme.png" alt="OK"></button>`;
                 container.querySelector('input').focus();
-                return; // Ne pas rafraîchir la liste tout de suite
+                return;
             } else if (target.closest('.save-id-button')) {
                 const saveButton = target.closest('.save-id-button');
                 const newId = saveButton.parentElement.querySelector('.edit-id-input').value.trim();
