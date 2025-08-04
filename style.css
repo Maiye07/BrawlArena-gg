@@ -819,20 +819,14 @@ a:hover {
     color: var(--text-dark);
 }
 
-/* ===== PREMIUM PAGE STYLES ===== */
+/* ===== PREMIUM PAGE STYLES (Multi-offer) ===== */
 
-.premium-container {
-    max-width: 650px;
-    margin: 50px auto;
-    background-color: var(--bg-light);
-    padding: 40px;
-    border-radius: 12px;
-    box-shadow: 0 0 25px rgba(0, 0, 0, 0.5);
+.pricing-header {
     text-align: center;
-    border-top: 4px solid var(--accent-violet);
+    margin: 40px 20px 0 20px;
 }
 
-.premium-container h1 {
+.pricing-header h1 {
     font-size: 2.8em;
     margin-bottom: 10px;
     background: linear-gradient(90deg, 
@@ -848,61 +842,116 @@ a:hover {
     animation: wave-animation 3s linear infinite;
 }
 
-.premium-container .subtitle {
+.pricing-header .subtitle {
     font-size: 1.2em;
     color: var(--text-dark);
     margin-bottom: 40px;
 }
 
-.benefits-list {
-    list-style: none;
-    padding: 0;
-    text-align: left;
-    margin: 0 auto 40px auto;
-    max-width: 500px;
+.pricing-grid {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 30px;
+    padding: 0 20px;
 }
 
-.benefits-list li {
-    font-size: 1.15em;
-    padding: 15px 10px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.benefits-list li:first-child {
-    border-top: 1px solid var(--border-color);
-}
-
-.price-display {
-    background-color: var(--bg-dark);
-    border: 1px solid var(--border-color);
-    padding: 20px;
-    border-radius: 8px;
-    margin-bottom: 30px;
-}
-
-.price-display strong {
-    font-size: 2em;
-    color: var(--primary-blue);
-    display: block;
-}
-
-#confirm-purchase-button {
-    font-size: 1.3em;
-    padding: 15px 30px;
+.pricing-card {
+    background-color: var(--bg-light);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    padding: 30px;
     width: 100%;
-    background: linear-gradient(90deg, var(--primary-blue), var(--hover-blue-light));
-    box-shadow: var(--glow-shadow-lg);
+    max-width: 350px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+}
+
+.pricing-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.pricing-card.recommended {
+    border-color: var(--accent-violet);
+    transform: scale(1.05);
+}
+
+.pricing-card.recommended:hover {
+     transform: scale(1.05) translateY(-5px);
+}
+
+.recommended-badge {
+    position: absolute;
+    top: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--accent-violet);
+    color: var(--text-light);
+    font-weight: bold;
+    font-size: 0.9em;
+    padding: 5px 15px;
+    border-radius: 20px;
+}
+
+.pricing-card h3 {
+    font-size: 1.8em;
+    color: var(--primary-blue);
+    margin-top: 0;
+    margin-bottom: 5px;
+}
+
+.card-subtitle {
+    color: var(--text-dark);
+    margin-top: 0;
+    min-height: 20px;
     margin-bottom: 20px;
 }
 
-.back-link {
-    display: inline-block;
-    color: var(--text-dark);
-    font-size: 1em;
-    transition: color 0.2s ease;
+.price-container {
+    margin-bottom: 25px;
 }
 
-.back-link:hover {
+.price {
+    font-size: 3em;
+    font-weight: bold;
     color: var(--text-light);
-    text-decoration: underline;
+}
+
+.frequency {
+    font-size: 1.1em;
+    color: var(--text-dark);
+    margin-left: 5px;
+}
+
+.pricing-card .benefits-list {
+    list-style: none;
+    padding: 0;
+    text-align: left;
+    margin: 0 0 30px 0;
+    flex-grow: 1;
+}
+
+.pricing-card .benefits-list li {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.pricing-card .benefits-list li:first-child {
+     border-top: 1px solid var(--border-color);
+}
+
+.select-plan-button {
+    width: 100%;
+    padding-top: 15px;
+    padding-bottom: 15px;
+}
+
+.back-link-container {
+    text-align: center;
+    margin: 40px 0;
 }

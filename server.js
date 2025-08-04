@@ -158,21 +158,67 @@ app.post('/users/statuses', async (req, res) => {
 });
 
 app.post('/create-checkout-session', async (req, res) => {
-    const { username } = req.body;
+    const { username, plan } = req.body;
+    if (!username || !plan) {
+        return res.status(400).json({ error: 'Informations de plan manquantes.' });
+    }
+
     const appUrl = process.env.YOUR_APP_URL || 'http://localhost:5500';
+    let lineItem = {};
+    let sessionMode = 'payment'; // Mode par défaut
+
     try {
+        switch (plan) {
+            case 'monthly':
+                sessionMode = 'subscription';
+                lineItem = {
+                    price_data: {
+                        currency: 'eur',
+                        product_data: { name: 'BrawlArena.gg - Premium (Mensuel)' },
+                        unit_amount: 200, // 2.00 EUR
+                        recurring: { interval: 'month' },
+                    },
+                    quantity: 1,
+                };
+                break;
+            case 'annual':
+                sessionMode = 'subscription';
+                lineItem = {
+                    price_data: {
+                        currency: 'eur',
+                        product_data: { name: 'BrawlArena.gg - Premium (Annuel)' },
+                        unit_amount: 1500, // 15.00 EUR
+                        recurring: { interval: 'year' },
+                    },
+                    quantity: 1,
+                };
+                break;
+            case 'lifetime':
+                sessionMode = 'payment';
+                lineItem = {
+                    price_data: {
+                        currency: 'eur',
+                        product_data: { name: 'BrawlArena.gg - Premium (À vie)' },
+                        unit_amount: 4000, // 40.00 EUR
+                    },
+                    quantity: 1,
+                };
+                break;
+            default:
+                return res.status(400).json({ error: 'Plan non valide.' });
+        }
+
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
-            mode: 'payment',
-            line_items: [{
-                price_data: { currency: 'eur', product_data: { name: 'BrawlArena.gg - Membre Premium' }, unit_amount: 500, },
-                quantity: 1,
-            }],
+            mode: sessionMode,
+            line_items: [lineItem],
             metadata: { username: username },
             success_url: `${appUrl}/dashboard.html?payment=success`,
             cancel_url: `${appUrl}/dashboard.html?payment=cancel`,
         });
+
         res.status(200).json({ url: session.url });
+
     } catch (error) {
         console.error("Erreur de création de session Stripe:", error);
         res.status(500).json({ error: "Impossible de lancer le paiement." });
