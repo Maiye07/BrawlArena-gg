@@ -95,9 +95,10 @@ app.post('/register', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis.' });
 
-    const validUsernameRegex = /^[A-Za-z0-9]+$/;
+    // MODIFICATION : Le point "." est maintenant autorisé dans le nom d'utilisateur.
+    const validUsernameRegex = /^[A-Za-z0-9.]+$/;
     if (!validUsernameRegex.test(username)) {
-        return res.status(400).json({ error: 'Pseudo invalide.' });
+        return res.status(400).json({ error: 'Pseudo invalide. Seuls les lettres, chiffres et points sont autorisés.' });
     }
     
     const userExists = await usersCollection.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });

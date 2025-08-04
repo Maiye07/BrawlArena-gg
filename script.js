@@ -55,9 +55,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const username = document.getElementById('register-username').value;
         const password = document.getElementById('register-password').value;
 
-        const validUsernameRegex = /^[A-Za-z0-9]+$/;
+        // MODIFICATION : Le point "." est maintenant autorisé dans le nom d'utilisateur.
+        const validUsernameRegex = /^[A-Za-z0-9.]+$/;
         if (!validUsernameRegex.test(username)) {
-            showMessage('Pseudo invalide.', 'error');
+            showMessage('Pseudo invalide. Seuls les lettres, chiffres et points sont autorisés.', 'error');
             return;
         }
 
