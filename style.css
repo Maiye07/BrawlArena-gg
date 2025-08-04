@@ -955,3 +955,147 @@ a:hover {
     text-align: center;
     margin: 40px 0;
 }
+
+/* =============================================== */
+/* NOUVEAUX STYLES POUR LE PROFIL UTILISATEUR */
+/* =============================================== */
+
+.profile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 25px;
+    margin-top: 25px;
+}
+
+.profile-info-card, .customization-card {
+    background-color: var(--bg-dark);
+    padding: 25px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.profile-info-card h3, .customization-card h3 {
+    color: var(--primary-blue);
+    margin-top: 0;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+}
+
+.customization-card h4 {
+    margin-top: 20px;
+    margin-bottom: 12px;
+    color: var(--text-light);
+}
+
+.profile-user-display-lg {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.8em;
+    margin-bottom: 15px;
+}
+
+.profile-user-display-lg .player-badge {
+    width: 32px;
+    height: 32px;
+}
+
+.selection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+/* Style des options de personnalisation */
+.color-swatch, .badge-icon-container {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 3px solid var(--border-color);
+    transition: all 0.2s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+.color-swatch:hover, .badge-icon-container:hover {
+    border-color: var(--primary-blue);
+    transform: scale(1.05);
+}
+
+.color-swatch.selected, .badge-icon-container.selected {
+    border-color: var(--hover-orange-light);
+    box-shadow: 0 0 10px rgba(255, 194, 51, 0.7);
+}
+
+/* Checkmark pour l'élément sélectionné */
+.selection-grid .selected::after {
+    content: '✔';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: var(--hover-orange-light);
+    color: var(--bg-dark);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.badge-icon-container img {
+    width: 40px;
+    height: 40px;
+}
+
+#save-customization-button {
+    width: 100%;
+    margin-top: 15px;
+}
+
+/* --- Nouvelles couleurs de pseudo --- */
+.username-text-display {
+    font-weight: bold;
+}
+
+/* Couleur par défaut */
+.username-color-default {
+    color: var(--text-light);
+}
+
+/* Couleur Premium (dégradé) */
+.username-color-premium-gradient {
+    background: linear-gradient(90deg, var(--primary-blue), var(--accent-violet), var(--primary-blue));
+    background-size: 200% auto;
+    color: #fff;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: wave-animation 3s linear infinite;
+}
+
+/* Ajoutez d'autres couleurs ici */
+.username-color-supporter-gold {
+    color: #FFD700;
+    text-shadow: 0 0 5px rgba(255, 215, 0, 0.6);
+}
+
+/* --- Styles pour les Badges --- */
+.player-badge {
+    height: 22px; /* Taille standard */
+    width: 22px;
+    vertical-align: middle;
+    margin-right: 6px;
+}
+
+/* Placeholder pour quand il n'y a pas de badge */
+.player-badge.badge-none {
+    display: none;
+}

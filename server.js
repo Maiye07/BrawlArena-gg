@@ -101,7 +101,12 @@ app.post('/register', async (req, res) => {
         dailyScrims: 0, 
         lastActivityDate: new Date().toISOString().split('T')[0],
         isBannedPermanently: false,
-        banExpiresAt: null 
+        banExpiresAt: null,
+        // --- NOUVEAUX CHAMPS DE PERSONNALISATION ---
+        activeColor: 'default',
+        activeBadge: 'none',
+        unlockedColors: ['default', 'premium-gradient'], // Le premium est "débloqué" mais utilisable que si isPremium = true
+        unlockedBadges: ['none', 'premium'] // Le premium est "débloqué" mais utilisable que si isPremium = true
     };
     await usersCollection.insertOne(newUser);
     res.status(201).json({ message: 'Compte créé avec succès !' });
@@ -121,12 +126,19 @@ app.post('/login', async (req, res) => {
         return res.status(403).json({ error: `Ce compte est banni temporairement jusqu'au ${expiryDate}.` });
     }
 
+    // --- RÉPONSE AMÉLIORÉE AVEC LES DONNÉES DE PERSONNALISATION ---
     res.status(200).json({ 
         message: 'Connexion réussie !', 
         username: user.username,
         isPremium: user.isPremium,
         dailyScrims: user.dailyScrims || 0,
-        lastActivityDate: user.lastActivityDate
+        lastActivityDate: user.lastActivityDate,
+        customization: {
+            activeColor: user.activeColor || 'default',
+            activeBadge: user.activeBadge || 'none',
+            unlockedColors: user.unlockedColors || ['default'],
+            unlockedBadges: user.unlockedBadges || ['none']
+        }
     });
 });
 
@@ -151,11 +163,64 @@ app.post('/users/statuses', async (req, res) => {
     try {
         const { usernames } = req.body;
         if (!usernames || !Array.isArray(usernames)) { return res.status(400).json({ error: "Un tableau de noms d'utilisateurs est requis." }); }
-        const users = await usersCollection.find({ username: { $in: usernames } },{ projection: { username: 1, isPremium: 1, _id: 0 } }).toArray();
-        const statusMap = users.reduce((acc, user) => { acc[user.username] = user.isPremium; return acc; }, {});
+        
+        // --- PROJECTION AMÉLIORÉE POUR INCLURE LA PERSONNALISATION ---
+        const users = await usersCollection.find(
+            { username: { $in: usernames } },
+            { projection: { username: 1, isPremium: 1, activeColor: 1, activeBadge: 1, _id: 0 } }
+        ).toArray();
+
+        // --- MAP DE STATUT AMÉLIORÉE ---
+        const statusMap = users.reduce((acc, user) => { 
+            acc[user.username] = {
+                isPremium: user.isPremium,
+                activeColor: user.activeColor || 'default',
+                activeBadge: user.activeBadge || 'none'
+            }; 
+            return acc; 
+        }, {});
         res.status(200).json(statusMap);
     } catch (error) { res.status(500).json({ error: "Erreur lors de la récupération des statuts." }); }
 });
+
+// --- NOUVELLE ROUTE POUR LA PERSONNALISATION ---
+app.post('/users/customize', async (req, res) => {
+    const { username, newColor, newBadge } = req.body;
+    if (!username || !newColor || !newBadge) {
+        return res.status(400).json({ error: "Informations de personnalisation manquantes." });
+    }
+
+    try {
+        const user = await usersCollection.findOne({ username });
+        if (!user) {
+            return res.status(404).json({ error: "Utilisateur non trouvé." });
+        }
+
+        // Sécurité : Vérifier que l'utilisateur possède bien les éléments qu'il veut équiper
+        const hasColor = user.unlockedColors.includes(newColor);
+        const hasBadge = user.unlockedBadges.includes(newBadge);
+
+        if (!hasColor || !hasBadge) {
+            return res.status(403).json({ error: "Vous ne possédez pas ces objets de personnalisation." });
+        }
+        
+        // Cas spécial pour les objets "premium"
+        if ((newColor === 'premium-gradient' || newBadge === 'premium') && !user.isPremium) {
+            return res.status(403).json({ error: "Vous devez être Premium pour utiliser cet objet." });
+        }
+
+        await usersCollection.updateOne(
+            { username },
+            { $set: { activeColor: newColor, activeBadge: newBadge } }
+        );
+
+        res.status(200).json({ message: "Profil mis à jour avec succès !" });
+
+    } catch (error) {
+        res.status(500).json({ error: "Erreur lors de la mise à jour du profil." });
+    }
+});
+
 
 app.post('/create-checkout-session', async (req, res) => {
     const { username, plan } = req.body;

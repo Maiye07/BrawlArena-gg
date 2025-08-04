@@ -53,18 +53,41 @@
             </div>
 
             <div id="profile-section" style="display: none;">
-                <h2>Profil de <span id="profile-username"></span></h2>
-                <div class="profile-info">
-                    <p><strong>Pseudo Supercell ID :</strong> <span id="profile-player-id">Non défini</span></p>
-                    <hr>
-                    <h3>Statistiques</h3>
-                    <p><strong>Tournois participés :</strong> <span id="profile-tournaments-attended">0</span></p>
-                    <p><strong>Scrims participés :</strong> <span id="profile-scrims-attended">0</span></p>
-                    <p><strong>Tournois gagnés :</strong> <span id="profile-tournaments-won">0</span></p>
-                    <hr>
-                    <h3>Créations journalières</h3>
-                    <p>Tournois restants : <strong><span id="profile-daily-tournaments">N/A</span></strong></p>
-                    <p>Scrims restants : <strong><span id="profile-daily-scrims">2</span></strong></p>
+                <div class="profile-header">
+                    <h2>Profil de <span id="profile-username-placeholder"></span></h2>
+                </div>
+
+                <div class="profile-grid">
+                    <div class="profile-info-card">
+                        <h3>Informations</h3>
+                        <div id="profile-user-display" class="profile-user-display-lg">
+                           </div>
+                        <p><strong>Tag joueur :</strong> <span id="profile-player-id">Non défini</span></p>
+                        <hr>
+                        <h3>Statistiques</h3>
+                        <p><strong>Tournois participés :</strong> <span id="profile-tournaments-attended">0</span></p>
+                        <p><strong>Scrims participés :</strong> <span id="profile-scrims-attended">0</span></p>
+                        <p><strong>Tournois gagnés :</strong> <span id="profile-tournaments-won">0</span></p>
+                        <hr>
+                        <h3>Créations journalières</h3>
+                        <p>Tournois restants : <strong><span id="profile-daily-tournaments">N/A</span></strong></p>
+                        <p>Scrims restants : <strong><span id="profile-daily-scrims">2</span></strong></p>
+                    </div>
+
+                    <div class="customization-card">
+                        <h3>Personnalisation</h3>
+                        
+                        <h4>Couleur du pseudo</h4>
+                        <div id="color-selection-grid" class="selection-grid">
+                            </div>
+
+                        <h4>Badges</h4>
+                        <div id="badge-selection-grid" class="selection-grid">
+                            </div>
+                        
+                        <button id="save-customization-button" class="button">Sauvegarder les changements</button>
+                        <p id="customization-message"></p>
+                    </div>
                 </div>
             </div>
             
