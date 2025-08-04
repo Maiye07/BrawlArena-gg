@@ -106,12 +106,10 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             localStorage.setItem('userDailyStats', JSON.stringify(userStats));
 
-            // ▼▼▼ CORRECTION APPORTÉE ICI ▼▼▼
             // Sauvegarde les données de personnalisation dans le localStorage
             if (data.customization) {
                 localStorage.setItem('userCustomization', JSON.stringify(data.customization));
             }
-            // ▲▲▲ FIN DE LA CORRECTION ▲▲▲
 
             window.location.href = 'dashboard.html';
         } catch (error) {

@@ -25,7 +25,17 @@ app.post('/stripe-webhook', express.raw({type: 'application/json'}), async (req,
         const username = session.metadata.username;
         if (username) {
             console.log(`Paiement réussi pour: ${username}. Mise à jour du statut premium.`);
-            await usersCollection.updateOne({ username: username }, { $set: { isPremium: true } });
+            // Modification pour ajouter les objets de personnalisation déverrouillés
+            await usersCollection.updateOne(
+                { username: username }, 
+                { 
+                    $set: { isPremium: true },
+                    $addToSet: { 
+                        unlockedColors: 'supporter-gold',
+                        unlockedBadges: 'supporter-gold'
+                    }
+                }
+            );
         }
     }
     res.status(200).json({ received: true });
@@ -150,10 +160,29 @@ app.get('/users', async (req, res) => {
 app.post('/premium/toggle', async (req, res) => {
     const { username } = req.body;
     if (!username) return res.status(400).json({ error: "Nom d'utilisateur manquant" });
+    
     const user = await usersCollection.findOne({ username });
     if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé.' });
+
     const newPremiumStatus = !user.isPremium;
-    await usersCollection.updateOne({ username }, { $set: { isPremium: newPremiumStatus } });
+
+    // Si l'utilisateur devient Premium, on ajoute les objets à ses listes
+    if (newPremiumStatus) {
+        await usersCollection.updateOne(
+            { username },
+            {
+                $set: { isPremium: newPremiumStatus },
+                $addToSet: {
+                    unlockedColors: 'premium-gradient',
+                    unlockedBadges: 'premium'
+                }
+            }
+        );
+    } else {
+        // Si l'utilisateur n'est plus Premium, on met simplement le statut à jour
+        await usersCollection.updateOne({ username }, { $set: { isPremium: newPremiumStatus } });
+    }
+
     res.status(200).json({ username, isPremium: newPremiumStatus });
 });
 
@@ -191,7 +220,6 @@ app.post('/users/customize', async (req, res) => {
             return res.status(404).json({ error: "Utilisateur non trouvé." });
         }
 
-        // CORRECTION : On s'assure que les tableaux existent avant de les utiliser.
         const userUnlockedColors = user.unlockedColors || [];
         const userUnlockedBadges = user.unlockedBadges || [];
 
