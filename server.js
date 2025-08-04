@@ -102,11 +102,10 @@ app.post('/register', async (req, res) => {
         lastActivityDate: new Date().toISOString().split('T')[0],
         isBannedPermanently: false,
         banExpiresAt: null,
-        // --- NOUVEAUX CHAMPS DE PERSONNALISATION ---
         activeColor: 'default',
         activeBadge: 'none',
-        unlockedColors: ['default', 'premium-gradient'], // Le premium est "débloqué" mais utilisable que si isPremium = true
-        unlockedBadges: ['none', 'premium'] // Le premium est "débloqué" mais utilisable que si isPremium = true
+        unlockedColors: ['default', 'premium-gradient'],
+        unlockedBadges: ['none', 'premium']
     };
     await usersCollection.insertOne(newUser);
     res.status(201).json({ message: 'Compte créé avec succès !' });
@@ -126,7 +125,6 @@ app.post('/login', async (req, res) => {
         return res.status(403).json({ error: `Ce compte est banni temporairement jusqu'au ${expiryDate}.` });
     }
 
-    // --- RÉPONSE AMÉLIORÉE AVEC LES DONNÉES DE PERSONNALISATION ---
     res.status(200).json({ 
         message: 'Connexion réussie !', 
         username: user.username,
@@ -164,13 +162,11 @@ app.post('/users/statuses', async (req, res) => {
         const { usernames } = req.body;
         if (!usernames || !Array.isArray(usernames)) { return res.status(400).json({ error: "Un tableau de noms d'utilisateurs est requis." }); }
         
-        // --- PROJECTION AMÉLIORÉE POUR INCLURE LA PERSONNALISATION ---
         const users = await usersCollection.find(
             { username: { $in: usernames } },
             { projection: { username: 1, isPremium: 1, activeColor: 1, activeBadge: 1, _id: 0 } }
         ).toArray();
 
-        // --- MAP DE STATUT AMÉLIORÉE ---
         const statusMap = users.reduce((acc, user) => { 
             acc[user.username] = {
                 isPremium: user.isPremium,
@@ -183,8 +179,6 @@ app.post('/users/statuses', async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Erreur lors de la récupération des statuts." }); }
 });
 
-// --- NOUVELLE ROUTE POUR LA PERSONNALISATION ---
-// --- NOUVELLE ROUTE POUR LA PERSONNALISATION (Version Corrigée) ---
 app.post('/users/customize', async (req, res) => {
     const { username, newColor, newBadge } = req.body;
     if (!username || !newColor || !newBadge) {
@@ -198,11 +192,9 @@ app.post('/users/customize', async (req, res) => {
         }
 
         // CORRECTION : On s'assure que les tableaux existent avant de les utiliser.
-        // Si user.unlockedColors n'existe pas, on utilise un tableau vide [].
         const userUnlockedColors = user.unlockedColors || [];
         const userUnlockedBadges = user.unlockedBadges || [];
 
-        // On utilise maintenant les variables sécurisées.
         const hasColor = userUnlockedColors.includes(newColor);
         const hasBadge = userUnlockedBadges.includes(newBadge);
 
@@ -210,12 +202,10 @@ app.post('/users/customize', async (req, res) => {
             return res.status(403).json({ error: "Vous ne possédez pas ces objets de personnalisation." });
         }
         
-        // Cas spécial pour les objets "premium"
         if ((newColor === 'premium-gradient' || newBadge === 'premium') && !user.isPremium) {
             return res.status(403).json({ error: "Vous devez être Premium pour utiliser cet objet." });
         }
 
-        // La mise à jour reste la même
         await usersCollection.updateOne(
             { username },
             { $set: { activeColor: newColor, activeBadge: newBadge } }
@@ -224,7 +214,6 @@ app.post('/users/customize', async (req, res) => {
         res.status(200).json({ message: "Profil mis à jour avec succès !" });
 
     } catch (error) {
-        // En cas d'autre erreur imprévue, on la logue sur le serveur pour faciliter le débogage
         console.error("Erreur dans /users/customize:", error);
         res.status(500).json({ error: "Erreur lors de la mise à jour du profil." });
     }
@@ -239,7 +228,7 @@ app.post('/create-checkout-session', async (req, res) => {
 
     const appUrl = process.env.YOUR_APP_URL || 'http://localhost:5500';
     let lineItem = {};
-    let sessionMode = 'payment'; // Mode par défaut
+    let sessionMode = 'payment';
 
     try {
         switch (plan) {
@@ -249,7 +238,7 @@ app.post('/create-checkout-session', async (req, res) => {
                     price_data: {
                         currency: 'eur',
                         product_data: { name: 'BrawlArena.gg - Premium (Mensuel)' },
-                        unit_amount: 200, // 2.00 EUR
+                        unit_amount: 200,
                         recurring: { interval: 'month' },
                     },
                     quantity: 1,
@@ -261,7 +250,7 @@ app.post('/create-checkout-session', async (req, res) => {
                     price_data: {
                         currency: 'eur',
                         product_data: { name: 'BrawlArena.gg - Premium (Annuel)' },
-                        unit_amount: 1500, // 15.00 EUR
+                        unit_amount: 1500,
                         recurring: { interval: 'year' },
                     },
                     quantity: 1,
@@ -273,7 +262,7 @@ app.post('/create-checkout-session', async (req, res) => {
                     price_data: {
                         currency: 'eur',
                         product_data: { name: 'BrawlArena.gg - Premium (À vie)' },
-                        unit_amount: 4000, // 40.00 EUR
+                        unit_amount: 4000,
                     },
                     quantity: 1,
                 };

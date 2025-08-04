@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const welcomeSection = document.getElementById('welcome-section');
+    const mainLandingPage = document.querySelector('.landing-page');
     const authContainer = document.getElementById('auth-container');
     const registerSection = document.getElementById('register-section');
     const loginSection = document.getElementById('login-section');
@@ -7,7 +7,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('login-form');
     const showLoginLink = document.getElementById('show-login');
     const showRegisterLink = document.getElementById('show-register');
-    const showAuthButton = document.getElementById('show-auth-button');
+    
+    // On cible les deux boutons qui peuvent ouvrir les formulaires
+    const showAuthButtonNavbar = document.getElementById('show-auth-button');
+    const showAuthButtonHero = document.getElementById('hero-show-auth-button');
+
     const messageDisplay = document.getElementById('message');
 
     const API_URL = 'https://brawlarena-gg.onrender.com';
@@ -17,14 +21,20 @@ document.addEventListener('DOMContentLoaded', () => {
         messageDisplay.className = type;
     }
 
-    showAuthButton.addEventListener('click', (e) => {
+    // Fonction pour afficher le formulaire d'authentification
+    function showAuthForm(e) {
         e.preventDefault();
-        welcomeSection.style.display = 'none';
+        if (mainLandingPage) mainLandingPage.style.display = 'none';
         authContainer.style.display = 'block';
         loginSection.style.display = 'block';
         registerSection.style.display = 'none';
         messageDisplay.textContent = '';
-    });
+    }
+
+    // On attache l'événement aux deux boutons
+    if (showAuthButtonNavbar) showAuthButtonNavbar.addEventListener('click', showAuthForm);
+    if (showAuthButtonHero) showAuthButtonHero.addEventListener('click', showAuthForm);
+
 
     showLoginLink.addEventListener('click', (e) => {
         e.preventDefault();
@@ -45,11 +55,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const username = document.getElementById('register-username').value;
         const password = document.getElementById('register-password').value;
 
-        // AJOUT : Validation du format du nom d'utilisateur côté client
         const validUsernameRegex = /^[A-Za-z0-9]+$/;
         if (!validUsernameRegex.test(username)) {
             showMessage('Pseudo invalide.', 'error');
-            return; // On arrête l'exécution
+            return;
         }
 
         showMessage('Création du compte en cours...', 'success');
@@ -96,6 +105,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 lastActivityDate: data.lastActivityDate
             };
             localStorage.setItem('userDailyStats', JSON.stringify(userStats));
+
+            // ▼▼▼ CORRECTION APPORTÉE ICI ▼▼▼
+            // Sauvegarde les données de personnalisation dans le localStorage
+            if (data.customization) {
+                localStorage.setItem('userCustomization', JSON.stringify(data.customization));
+            }
+            // ▲▲▲ FIN DE LA CORRECTION ▲▲▲
 
             window.location.href = 'dashboard.html';
         } catch (error) {
