@@ -253,7 +253,6 @@ function renderProfileCustomization() {
         } else {
             // Appliquer le style "verrouillé"
             container.classList.add('locked');
-            container.innerHTML += '<div class="lock-overlay">🔒</div>';
             container.title = "Non débloqué";
         }
         badgeSelectionGrid.appendChild(container);
