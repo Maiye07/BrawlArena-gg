@@ -130,6 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         let badgeHTML = badgeSrc ? `<img src="${badgeSrc}" alt="Badge" class="player-badge">` : '';
                         let creatorIconHTML = (player === scrim.creator) ? `<img src="images/crown.png" alt="Créateur" class="creator-crown">` : '';
 
+                        // MODIFIÉ ICI : Le pseudo est maintenant avant le badge
                         return `<li><span class="${colorClass}">${player}</span>${badgeHTML} ${creatorIconHTML}</li>`;
                     }).join('');
 
@@ -191,6 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (profileUserDisplay) {
             const badgeSrc = badgeImageMap[userCustomization.activeBadge];
             const colorClass = colorClassMap[userCustomization.activeColor] || 'username-color-default';
+            // MODIFIÉ ICI : Le span du pseudo est avant l'image du badge
             profileUserDisplay.innerHTML = `
                 <span class="username-text-display ${colorClass}">${loggedInUsername}</span>
                 ${badgeSrc ? `<img src="${badgeSrc}" alt="Badge" class="player-badge">` : ''}
@@ -198,82 +200,77 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // MODIFIÉ : Correction pour éviter les doublons de compteurs
-    function renderProfileCustomization() {
-        if (!colorSelectionGrid || !badgeSelectionGrid) return;
+function renderProfileCustomization() {
+    if (!colorSelectionGrid || !badgeSelectionGrid) return;
 
-        // Supprimer les compteurs et les grilles existants pour éviter les doublons
-        const existingColorCounter = document.getElementById('color-counter');
-        if (existingColorCounter) existingColorCounter.remove();
-        colorSelectionGrid.innerHTML = '';
+    // Récupérer les éléments pour afficher les compteurs
+    const colorCountDisplaySpan = document.getElementById('color-count-display');
+    const badgeCountDisplaySpan = document.getElementById('badge-count-display');
 
-        const existingBadgeCounter = document.getElementById('badge-counter');
-        if (existingBadgeCounter) existingBadgeCounter.remove();
-        badgeSelectionGrid.innerHTML = '';
-        
-        const userUnlockedColors = userCustomization.unlockedColors || [];
-        const userUnlockedBadges = userCustomization.unlockedBadges || [];
+    // Vider les grilles précédentes
+    colorSelectionGrid.innerHTML = '';
+    badgeSelectionGrid.innerHTML = '';
 
-        // --- Affichage du compteur de couleurs ---
-        const totalColors = Object.keys(colorClassMap).length;
-        const unlockedColorsCount = userUnlockedColors.length;
-        const colorCountDisplay = document.createElement('p');
-        colorCountDisplay.id = 'color-counter';
-        colorCountDisplay.innerHTML = `<strong>Couleurs possédées :</strong> ${unlockedColorsCount} / ${totalColors}`;
-        colorSelectionGrid.before(colorCountDisplay);
+    const userUnlockedColors = userCustomization.unlockedColors || [];
+    const userUnlockedBadges = userCustomization.unlockedBadges || [];
 
-        // --- Affichage de toutes les couleurs ---
-        Object.keys(colorClassMap).forEach(colorId => {
-            const swatch = document.createElement('div');
-            swatch.className = 'color-swatch';
-            swatch.dataset.colorId = colorId;
-            swatch.innerHTML = `<span class="${colorClassMap[colorId] || ''}">Aa</span>`;
-
-            const isUnlocked = userUnlockedColors.includes(colorId);
-
-            if (isUnlocked) {
-                if (colorId === userCustomization.activeColor) {
-                    swatch.classList.add('selected');
-                }
-            } else {
-                swatch.classList.add('locked');
-                swatch.title = "Non débloqué";
-            }
-            colorSelectionGrid.appendChild(swatch);
-        });
-
-        // --- Affichage du compteur de badges ---
-        // Le badge 'none' n'est pas compté dans le total
-        const totalBadges = Object.keys(badgeImageMap).length - 1; 
-        const unlockedBadgesCount = userUnlockedBadges.length - (userUnlockedBadges.includes('none') ? 1 : 0);
-        const badgeCountDisplay = document.createElement('p');
-        badgeCountDisplay.id = 'badge-counter';
-        badgeCountDisplay.innerHTML = `<strong>Badges possédés :</strong> ${unlockedBadgesCount} / ${totalBadges}`;
-        badgeSelectionGrid.before(badgeCountDisplay);
-
-        // --- Affichage de tous les badges ---
-        Object.keys(badgeImageMap).forEach(badgeId => {
-            const badgeSrc = badgeImageMap[badgeId];
-            if (!badgeSrc) return; 
-
-            const container = document.createElement('div');
-            container.className = 'badge-icon-container';
-            container.dataset.badgeId = badgeId;
-            container.innerHTML = `<img src="${badgeSrc}" alt="Badge ${badgeId}">`;
-
-            const isUnlocked = userUnlockedBadges.includes(badgeId);
-
-            if (isUnlocked) {
-                if (badgeId === userCustomization.activeBadge) {
-                    container.classList.add('selected');
-                }
-            } else {
-                container.classList.add('locked');
-                container.title = "Non débloqué";
-            }
-            badgeSelectionGrid.appendChild(container);
-        });
+    // --- Calcul et affichage du compteur de couleurs ---
+    const totalColors = Object.keys(colorClassMap).length;
+    const unlockedColorsCount = userUnlockedColors.length;
+    if (colorCountDisplaySpan) {
+        colorCountDisplaySpan.textContent = `(${unlockedColorsCount}/${totalColors})`;
     }
+
+    // --- Affichage de toutes les couleurs ---
+    Object.keys(colorClassMap).forEach(colorId => {
+        const swatch = document.createElement('div');
+        swatch.className = 'color-swatch';
+        swatch.dataset.colorId = colorId;
+        swatch.innerHTML = `<span class="${colorClassMap[colorId] || ''}">Aa</span>`;
+
+        const isUnlocked = userUnlockedColors.includes(colorId);
+
+        if (isUnlocked) {
+            if (colorId === userCustomization.activeColor) {
+                swatch.classList.add('selected');
+            }
+        } else {
+            swatch.classList.add('locked');
+            swatch.title = "Non débloqué";
+        }
+        colorSelectionGrid.appendChild(swatch);
+    });
+
+    // --- Calcul et affichage du compteur de badges ---
+    const totalBadges = Object.keys(badgeImageMap).length - 1; 
+    const unlockedBadgesCount = userUnlockedBadges.length - (userUnlockedBadges.includes('none') ? 1 : 0);
+    if (badgeCountDisplaySpan) {
+        badgeCountDisplaySpan.textContent = `(${unlockedBadgesCount}/${totalBadges})`;
+    }
+
+    // --- Affichage de tous les badges ---
+    Object.keys(badgeImageMap).forEach(badgeId => {
+        const badgeSrc = badgeImageMap[badgeId];
+        if (!badgeSrc) return; 
+
+        const container = document.createElement('div');
+        container.className = 'badge-icon-container';
+        container.dataset.badgeId = badgeId;
+        container.innerHTML = `<img src="${badgeSrc}" alt="Badge ${badgeId}">`;
+
+        const isUnlocked = userUnlockedBadges.includes(badgeId);
+
+        if (isUnlocked) {
+            if (badgeId === userCustomization.activeBadge) {
+                container.classList.add('selected');
+            }
+        } else {
+            container.classList.add('locked');
+            container.title = "Non débloqué";
+        }
+        badgeSelectionGrid.appendChild(container);
+    });
+}
     
     function updateUtcClock() {
         const now = new Date();
