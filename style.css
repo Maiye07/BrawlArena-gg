@@ -469,6 +469,8 @@ a:hover {
     height: 26px;
     width: 26px;
     vertical-align: middle;
+    position: relative;
+    top: 2px;
 }
 
 .creator-crown {
@@ -1091,12 +1093,16 @@ a:hover {
     height: 24px;
     width: 24px;
     vertical-align: middle;
+    position: relative;
+    top: 2px;
 }
 
 .premium-badge {
     height: 26px;
     width: 26px;
     vertical-align: middle;
+    position: relative;
+    top: 2px;
 }
 
 /* Placeholder pour quand il n'y a pas de badge */
