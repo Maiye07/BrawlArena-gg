@@ -489,6 +489,57 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- INITIALISATION DE LA PAGE ---
+
+    // On vérifie les paramètres dans l'URL pour détecter un retour de paiement réussi
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('payment') === 'success') {
+        // Si le paiement a réussi, on met à jour les données de l'utilisateur
+        alert('Paiement réussi ! Votre compte est mis à jour avec vos avantages Premium.');
+
+        // On attend un court instant pour s'assurer que le webhook de Stripe a eu le temps de mettre à jour la base de données
+        setTimeout(async () => {
+            try {
+                const response = await fetch(`${API_URL}/users/statuses`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usernames: [loggedInUsername] })
+                });
+
+                if (!response.ok) throw new Error('La récupération des données a échoué.');
+                
+                const statuses = await response.json();
+                const userData = statuses[loggedInUsername];
+
+                if (userData) {
+                    // Mise à jour du localStorage avec les nouvelles données
+                    localStorage.setItem('isPremium', userData.isPremium);
+                    
+                    // On met spécifiquement à jour les objets déverrouillés
+                    const freshCustomization = JSON.parse(localStorage.getItem('userCustomization')) || {};
+                    freshCustomization.unlockedColors = userData.unlockedColors;
+                    freshCustomization.unlockedBadges = userData.unlockedBadges;
+                    localStorage.setItem('userCustomization', JSON.stringify(freshCustomization));
+
+                    // Recharger les variables globales depuis le localStorage mis à jour
+                    isCurrentUserPremium = userData.isPremium;
+                    userCustomization = freshCustomization;
+
+                    // Mettre à jour l'affichage
+                    updateUserDisplay(loggedInUsername, userCustomization);
+                    updateProfileView();
+                    renderProfileCustomization(); // Affiche les nouvelles options dans la section profil
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Une erreur est survenue lors de la mise à jour de votre compte. Veuillez vous reconnecter pour voir les changements.");
+            } finally {
+                // Nettoie l'URL pour une meilleure expérience utilisateur
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }, 1500); // Délai de 1.5 secondes
+    }
+
+    // Code d'initialisation standard qui s'exécute à chaque chargement
     if (usernameDisplay) usernameDisplay.textContent = loggedInUsername;
     updateUserDisplay(loggedInUsername, userCustomization);
     updateProfileView();

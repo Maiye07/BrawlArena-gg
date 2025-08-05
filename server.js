@@ -190,16 +190,20 @@ app.post('/users/statuses', async (req, res) => {
         const { usernames } = req.body;
         if (!usernames || !Array.isArray(usernames)) { return res.status(400).json({ error: "Un tableau de noms d'utilisateurs est requis." }); }
         
+        // MODIFICATION : Ajout de unlockedColors et unlockedBadges à la projection
         const users = await usersCollection.find(
             { username: { $in: usernames } },
-            { projection: { username: 1, isPremium: 1, activeColor: 1, activeBadge: 1, _id: 0 } }
+            { projection: { username: 1, isPremium: 1, activeColor: 1, activeBadge: 1, unlockedColors: 1, unlockedBadges: 1, _id: 0 } }
         ).toArray();
 
         const statusMap = users.reduce((acc, user) => { 
             acc[user.username] = {
                 isPremium: user.isPremium,
                 activeColor: user.activeColor || 'default',
-                activeBadge: user.activeBadge || 'none'
+                activeBadge: user.activeBadge || 'none',
+                // MODIFICATION : Ajout des objets déverrouillés à la réponse
+                unlockedColors: user.unlockedColors || ['default'],
+                unlockedBadges: user.unlockedBadges || ['none']
             }; 
             return acc; 
         }, {});
