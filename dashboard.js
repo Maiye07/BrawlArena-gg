@@ -200,16 +200,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-// MODIFIÉ : Nouvelle version pour mieux afficher les objets verrouillés
 function renderProfileCustomization() {
     if (!colorSelectionGrid || !badgeSelectionGrid) return;
 
-    // Vider les grilles actuelles
+    // Vider les grilles et les compteurs précédents
     colorSelectionGrid.innerHTML = '';
     badgeSelectionGrid.innerHTML = '';
 
     const userUnlockedColors = userCustomization.unlockedColors || [];
     const userUnlockedBadges = userCustomization.unlockedBadges || [];
+
+    // --- Affichage du compteur de couleurs ---
+    const totalColors = Object.keys(colorClassMap).length;
+    const unlockedColorsCount = userUnlockedColors.length;
+    const colorCountDisplay = document.createElement('p');
+    colorCountDisplay.innerHTML = `<strong>Couleurs possédées :</strong> ${unlockedColorsCount} / ${totalColors}`;
+    colorSelectionGrid.before(colorCountDisplay);
 
     // --- Affichage de toutes les couleurs ---
     Object.keys(colorClassMap).forEach(colorId => {
@@ -225,17 +231,23 @@ function renderProfileCustomization() {
                 swatch.classList.add('selected');
             }
         } else {
-            // On ajoute simplement la classe 'locked'. Le CSS s'occupera du cadenas.
             swatch.classList.add('locked');
             swatch.title = "Non débloqué";
         }
         colorSelectionGrid.appendChild(swatch);
     });
 
+    // --- Affichage du compteur de badges ---
+    // Le badge 'none' n'est pas compté dans le total
+    const totalBadges = Object.keys(badgeImageMap).length - 1; 
+    const unlockedBadgesCount = userUnlockedBadges.length - (userUnlockedBadges.includes('none') ? 1 : 0);
+    const badgeCountDisplay = document.createElement('p');
+    badgeCountDisplay.innerHTML = `<strong>Badges possédés :</strong> ${unlockedBadgesCount} / ${totalBadges}`;
+    badgeSelectionGrid.before(badgeCountDisplay);
+
     // --- Affichage de tous les badges ---
     Object.keys(badgeImageMap).forEach(badgeId => {
         const badgeSrc = badgeImageMap[badgeId];
-        // On ne veut pas afficher "Aucun badge" comme une option à cadenasser
         if (!badgeSrc) return; 
 
         const container = document.createElement('div');
@@ -246,12 +258,10 @@ function renderProfileCustomization() {
         const isUnlocked = userUnlockedBadges.includes(badgeId);
 
         if (isUnlocked) {
-            // Comportement normal pour un objet déverrouillé
             if (badgeId === userCustomization.activeBadge) {
                 container.classList.add('selected');
             }
         } else {
-            // Appliquer le style "verrouillé"
             container.classList.add('locked');
             container.title = "Non débloqué";
         }
