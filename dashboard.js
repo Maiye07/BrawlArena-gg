@@ -130,7 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         let badgeHTML = badgeSrc ? `<img src="${badgeSrc}" alt="Badge" class="player-badge">` : '';
                         let creatorIconHTML = (player === scrim.creator) ? `<img src="images/crown.png" alt="Créateur" class="creator-crown">` : '';
 
-                        // MODIFIÉ ICI : Le pseudo est maintenant avant le badge
                         return `<li><span class="${colorClass}">${player}</span>${badgeHTML} ${creatorIconHTML}</li>`;
                     }).join('');
 
@@ -192,7 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (profileUserDisplay) {
             const badgeSrc = badgeImageMap[userCustomization.activeBadge];
             const colorClass = colorClassMap[userCustomization.activeColor] || 'username-color-default';
-            // MODIFIÉ ICI : Le span du pseudo est avant l'image du badge
             profileUserDisplay.innerHTML = `
                 <span class="username-text-display ${colorClass}">${loggedInUsername}</span>
                 ${badgeSrc ? `<img src="${badgeSrc}" alt="Badge" class="player-badge">` : ''}
@@ -203,25 +201,21 @@ document.addEventListener('DOMContentLoaded', () => {
 function renderProfileCustomization() {
     if (!colorSelectionGrid || !badgeSelectionGrid) return;
 
-    // Récupérer les éléments pour afficher les compteurs
     const colorCountDisplaySpan = document.getElementById('color-count-display');
     const badgeCountDisplaySpan = document.getElementById('badge-count-display');
 
-    // Vider les grilles précédentes
     colorSelectionGrid.innerHTML = '';
     badgeSelectionGrid.innerHTML = '';
 
     const userUnlockedColors = userCustomization.unlockedColors || [];
     const userUnlockedBadges = userCustomization.unlockedBadges || [];
 
-    // --- Calcul et affichage du compteur de couleurs ---
     const totalColors = Object.keys(colorClassMap).length;
     const unlockedColorsCount = userUnlockedColors.length;
     if (colorCountDisplaySpan) {
         colorCountDisplaySpan.textContent = `(${unlockedColorsCount}/${totalColors})`;
     }
 
-    // --- Affichage de toutes les couleurs ---
     Object.keys(colorClassMap).forEach(colorId => {
         const swatch = document.createElement('div');
         swatch.className = 'color-swatch';
@@ -241,14 +235,12 @@ function renderProfileCustomization() {
         colorSelectionGrid.appendChild(swatch);
     });
 
-    // --- Calcul et affichage du compteur de badges ---
     const totalBadges = Object.keys(badgeImageMap).length - 1; 
     const unlockedBadgesCount = userUnlockedBadges.length - (userUnlockedBadges.includes('none') ? 1 : 0);
     if (badgeCountDisplaySpan) {
         badgeCountDisplaySpan.textContent = `(${unlockedBadgesCount}/${totalBadges})`;
     }
 
-    // --- Affichage de tous les badges ---
     Object.keys(badgeImageMap).forEach(badgeId => {
         const badgeSrc = badgeImageMap[badgeId];
         if (!badgeSrc) return; 
@@ -356,11 +348,30 @@ function renderProfileCustomization() {
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error);
+
             isCurrentUserPremium = data.isPremium;
             localStorage.setItem('isPremium', isCurrentUserPremium);
+            
+            if (isCurrentUserPremium) {
+                // Débloque les objets premium côté client pour une MàJ instantanée
+                const unlockedColors = new Set(userCustomization.unlockedColors);
+                ['premium-gradient', 'supporter-gold'].forEach(color => unlockedColors.add(color));
+                userCustomization.unlockedColors = Array.from(unlockedColors);
+
+                const unlockedBadges = new Set(userCustomization.unlockedBadges);
+                ['premium', 'supporter-gold'].forEach(badge => unlockedBadges.add(badge));
+                userCustomization.unlockedBadges = Array.from(unlockedBadges);
+                
+                localStorage.setItem('userCustomization', JSON.stringify(userCustomization));
+            }
+
+            // Rafraîchir toute l'interface
             updateUserDisplay(loggedInUsername, userCustomization);
             updateProfileView();
+            renderProfileCustomization(); // Essentiel pour mettre à jour les grilles
+
             alert(`Statut Premium ${isCurrentUserPremium ? 'activé' : 'désactivé'} !`);
+
         } catch (error) {
             alert(`Erreur: ${error.message}`);
         }
@@ -531,50 +542,26 @@ function renderProfileCustomization() {
     // On vérifie les paramètres dans l'URL pour détecter un retour de paiement réussi
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('payment') === 'success') {
-        // Si le paiement a réussi, on met à jour les données de l'utilisateur
         alert('Paiement réussi ! Votre compte est mis à jour avec vos avantages Premium.');
 
-        // On attend un court instant pour s'assurer que le webhook de Stripe a eu le temps de mettre à jour la base de données
-        setTimeout(async () => {
-            try {
-                const response = await fetch(`${API_URL}/users/statuses`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ usernames: [loggedInUsername] })
-                });
+        isCurrentUserPremium = true;
+        localStorage.setItem('isPremium', 'true');
 
-                if (!response.ok) throw new Error('La récupération des données a échoué.');
-                
-                const statuses = await response.json();
-                const userData = statuses[loggedInUsername];
+        const unlockedColors = new Set(userCustomization.unlockedColors);
+        ['premium-gradient', 'supporter-gold'].forEach(color => unlockedColors.add(color));
+        userCustomization.unlockedColors = Array.from(unlockedColors);
 
-                if (userData) {
-                    // Mise à jour du localStorage avec les nouvelles données
-                    localStorage.setItem('isPremium', userData.isPremium);
-                    
-                    // On met spécifiquement à jour les objets déverrouillés
-                    const freshCustomization = JSON.parse(localStorage.getItem('userCustomization')) || {};
-                    freshCustomization.unlockedColors = userData.unlockedColors;
-                    freshCustomization.unlockedBadges = userData.unlockedBadges;
-                    localStorage.setItem('userCustomization', JSON.stringify(freshCustomization));
+        const unlockedBadges = new Set(userCustomization.unlockedBadges);
+        ['premium', 'supporter-gold'].forEach(badge => unlockedBadges.add(badge));
+        userCustomization.unlockedBadges = Array.from(unlockedBadges);
+        
+        localStorage.setItem('userCustomization', JSON.stringify(userCustomization));
 
-                    // Recharger les variables globales depuis le localStorage mis à jour
-                    isCurrentUserPremium = userData.isPremium;
-                    userCustomization = freshCustomization;
+        updateUserDisplay(loggedInUsername, userCustomization);
+        updateProfileView();
+        renderProfileCustomization(); 
 
-                    // Mettre à jour l'affichage
-                    updateUserDisplay(loggedInUsername, userCustomization);
-                    updateProfileView();
-                    renderProfileCustomization(); // Affiche les nouvelles options dans la section profil
-                }
-            } catch (error) {
-                console.error(error);
-                alert("Une erreur est survenue lors de la mise à jour de votre compte. Veuillez vous reconnecter pour voir les changements.");
-            } finally {
-                // Nettoie l'URL pour une meilleure expérience utilisateur
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
-        }, 1500); // Délai de 1.5 secondes
+        window.history.replaceState({}, document.title, window.location.pathname);
     }
 
     // Code d'initialisation standard qui s'exécute à chaque chargement
