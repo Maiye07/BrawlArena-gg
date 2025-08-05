@@ -1092,7 +1092,14 @@ a:hover {
     height: 22px; /* Taille standard */
     width: 22px;
     vertical-align: middle;
-    margin-right: 6px;
+    margin-left: 6px; /* CHANGÉ: de margin-right à margin-left */
+}
+
+.premium-badge {
+    height: 28px;
+    width: 28px;
+    vertical-align: middle;
+    margin-left: 6px; /* AJOUTÉ: pour la cohérence de l'espacement */
 }
 
 /* Placeholder pour quand il n'y a pas de badge */

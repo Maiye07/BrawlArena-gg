@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- SÉLECTION DES ÉLÉMENTS DU DOM ---
+    const usernameDisplay = document.getElementById('username-display');
     const utcClockElement = document.getElementById('utc-clock');
     const displayUsernameInNavbar = document.getElementById('display-username');
     const navbarPremiumBadge = document.getElementById('navbar-premium-badge');
@@ -129,7 +130,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         let badgeHTML = badgeSrc ? `<img src="${badgeSrc}" alt="Badge" class="player-badge">` : '';
                         let creatorIconHTML = (player === scrim.creator) ? `<img src="images/crown.png" alt="Créateur" class="creator-crown">` : '';
 
-                        return `<li>${badgeHTML}<span class="${colorClass}">${player}</span> ${creatorIconHTML}</li>`;
+                        // MODIFIÉ ICI : Le pseudo est maintenant avant le badge
+                        return `<li><span class="${colorClass}">${player}</span>${badgeHTML} ${creatorIconHTML}</li>`;
                     }).join('');
 
                     let adminDeleteIcon = (loggedInUsername.toLowerCase() === 'brawlarena.gg') ? `<span class="admin-delete-scrim" data-scrim-id="${scrim._id}" title="Supprimer">🗑️</span>` : '';
@@ -190,9 +192,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (profileUserDisplay) {
             const badgeSrc = badgeImageMap[userCustomization.activeBadge];
             const colorClass = colorClassMap[userCustomization.activeColor] || 'username-color-default';
+            // MODIFIÉ ICI : Le span du pseudo est avant l'image du badge
             profileUserDisplay.innerHTML = `
-                ${badgeSrc ? `<img src="${badgeSrc}" alt="Badge" class="player-badge">` : ''}
                 <span class="username-text-display ${colorClass}">${loggedInUsername}</span>
+                ${badgeSrc ? `<img src="${badgeSrc}" alt="Badge" class="player-badge">` : ''}
             `;
         }
     }
@@ -327,7 +330,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Personnalisation
     if (saveCustomizationButton) {
-        // CORRECTION APPLIQUÉE ICI
         saveCustomizationButton.addEventListener('click', async () => {
             const newColor = colorSelectionGrid.querySelector('.selected')?.dataset.colorId || userCustomization.activeColor;
             const newBadge = badgeSelectionGrid.querySelector('.selected')?.dataset.badgeId || 'none';
@@ -336,7 +338,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveCustomizationButton.disabled = true;
                 saveCustomizationButton.textContent = "Sauvegarde...";
                 
-                // Le `body` de la requête est maintenant correctement rempli
                 const response = await fetch(`${API_URL}/users/customize`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -349,11 +350,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const data = await response.json();
                 if (!response.ok) {
-                    // Si le serveur renvoie une erreur, on l'affiche
                     throw new Error(data.error || "Une erreur inconnue est survenue.");
                 }
                 
-                // Mettre à jour les données locales si la sauvegarde a réussi
                 userCustomization.activeColor = newColor;
                 userCustomization.activeBadge = newBadge;
                 localStorage.setItem('userCustomization', JSON.stringify(userCustomization));
@@ -364,7 +363,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 customizationMessage.textContent = data.message;
                 customizationMessage.className = 'success';
             } catch (error) {
-                // `error.message` contient maintenant l'erreur précise du serveur
                 customizationMessage.textContent = `Erreur : ${error.message}`;
                 customizationMessage.className = 'error';
             } finally {
@@ -491,6 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- INITIALISATION DE LA PAGE ---
+    if (usernameDisplay) usernameDisplay.textContent = loggedInUsername;
     updateUserDisplay(loggedInUsername, userCustomization);
     updateProfileView();
     showSection('home');
