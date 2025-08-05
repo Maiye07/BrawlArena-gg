@@ -74,7 +74,7 @@ body {
 .username-badge-container {
     display: flex;
     align-items: center;
-    gap: 0;
+    gap: 6px;
 }
 
 .username-text {
@@ -410,7 +410,7 @@ a:hover {
     margin-bottom: 5px;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
 }
 
 .scrim-card .scrim-actions {
@@ -466,10 +466,9 @@ a:hover {
 }
 
 .premium-badge {
-    height: 28px;
-    width: 28px;
+    height: 24px;
+    width: 24px;
     vertical-align: middle;
-    margin-left: 0px;
 }
 
 .creator-crown {
@@ -991,7 +990,7 @@ a:hover {
 .profile-user-display-lg {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     font-size: 1.8em;
     margin-bottom: 15px;
 }
@@ -1089,17 +1088,15 @@ a:hover {
 
 /* --- Styles pour les Badges --- */
 .player-badge {
-    height: 22px; /* Taille standard */
+    height: 22px;
     width: 22px;
     vertical-align: middle;
-    margin-left: 6px; /* CHANGÉ: de margin-right à margin-left */
 }
 
 .premium-badge {
-    height: 28px;
-    width: 28px;
+    height: 24px;
+    width: 24px;
     vertical-align: middle;
-    margin-left: 6px; /* AJOUTÉ: pour la cohérence de l'espacement */
 }
 
 /* Placeholder pour quand il n'y a pas de badge */
