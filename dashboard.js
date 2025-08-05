@@ -200,39 +200,66 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    function renderProfileCustomization() {
-        if (!colorSelectionGrid || !badgeSelectionGrid) return;
-        colorSelectionGrid.innerHTML = '';
-        badgeSelectionGrid.innerHTML = '';
+function renderProfileCustomization() {
+    if (!colorSelectionGrid || !badgeSelectionGrid) return;
 
-        userCustomization.unlockedColors.forEach(colorId => {
-            const swatch = document.createElement('div');
-            swatch.className = 'color-swatch';
-            swatch.dataset.colorId = colorId;
-            swatch.innerHTML = `<span class="${colorClassMap[colorId] || ''}">Aa</span>`;
-            if (colorId === userCustomization.activeColor) swatch.classList.add('selected');
-            if (colorId.includes('premium') && !isCurrentUserPremium) {
-                swatch.classList.add('locked');
-                swatch.title = "Réservé aux membres Premium";
-            }
-            colorSelectionGrid.appendChild(swatch);
-        });
+    // Vider les grilles actuelles
+    colorSelectionGrid.innerHTML = '';
+    badgeSelectionGrid.innerHTML = '';
 
-        userCustomization.unlockedBadges.forEach(badgeId => {
-            const badgeSrc = badgeImageMap[badgeId];
-            if (!badgeSrc) return;
-            const container = document.createElement('div');
-            container.className = 'badge-icon-container';
-            container.dataset.badgeId = badgeId;
-            container.innerHTML = `<img src="${badgeSrc}" alt="Badge ${badgeId}">`;
-            if (badgeId === userCustomization.activeBadge) container.classList.add('selected');
-            if (badgeId.includes('premium') && !isCurrentUserPremium) {
-                container.classList.add('locked');
-                container.title = "Réservé aux membres Premium";
+    const userUnlockedColors = userCustomization.unlockedColors || [];
+    const userUnlockedBadges = userCustomization.unlockedBadges || [];
+
+    // --- Affichage de toutes les couleurs ---
+    Object.keys(colorClassMap).forEach(colorId => {
+        const swatch = document.createElement('div');
+        swatch.className = 'color-swatch';
+        swatch.dataset.colorId = colorId;
+        swatch.innerHTML = `<span class="${colorClassMap[colorId] || ''}">Aa</span>`;
+
+        const isUnlocked = userUnlockedColors.includes(colorId);
+
+        if (isUnlocked) {
+            // Comportement normal pour un objet déverrouillé
+            if (colorId === userCustomization.activeColor) {
+                swatch.classList.add('selected');
             }
-            badgeSelectionGrid.appendChild(container);
-        });
-    }
+        } else {
+            // Appliquer le style "verrouillé"
+            swatch.classList.add('locked');
+            swatch.innerHTML += '<div class="lock-overlay">🔒</div>';
+            swatch.title = "Non débloqué";
+        }
+        colorSelectionGrid.appendChild(swatch);
+    });
+
+    // --- Affichage de tous les badges ---
+    Object.keys(badgeImageMap).forEach(badgeId => {
+        const badgeSrc = badgeImageMap[badgeId];
+        // On ne veut pas afficher "Aucun badge" comme une option à cadenasser
+        if (!badgeSrc) return; 
+
+        const container = document.createElement('div');
+        container.className = 'badge-icon-container';
+        container.dataset.badgeId = badgeId;
+        container.innerHTML = `<img src="${badgeSrc}" alt="Badge ${badgeId}">`;
+
+        const isUnlocked = userUnlockedBadges.includes(badgeId);
+
+        if (isUnlocked) {
+            // Comportement normal pour un objet déverrouillé
+            if (badgeId === userCustomization.activeBadge) {
+                container.classList.add('selected');
+            }
+        } else {
+            // Appliquer le style "verrouillé"
+            container.classList.add('locked');
+            container.innerHTML += '<div class="lock-overlay">🔒</div>';
+            container.title = "Non débloqué";
+        }
+        badgeSelectionGrid.appendChild(container);
+    });
+}
     
     function updateUtcClock() {
         const now = new Date();

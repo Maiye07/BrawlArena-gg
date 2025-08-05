@@ -1109,3 +1109,30 @@ a:hover {
 .player-badge.badge-none {
     display: none;
 }
+
+/* --- NOUVEAU : Styles pour les objets verrouillés dans la personnalisation --- */
+.selection-grid .locked {
+    opacity: 0.5;
+    cursor: not-allowed;
+    position: relative;
+}
+
+.selection-grid .locked:hover {
+    border-color: var(--border-color); /* Empêche le changement de couleur de la bordure au survol */
+    transform: none; /* Empêche l'effet de zoom au survol */
+}
+
+.selection-grid .lock-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(13, 15, 26, 0.6); /* Fond sombre semi-transparent */
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    border-radius: 5px; /* Doit correspondre au border-radius de l'élément parent */
+}
