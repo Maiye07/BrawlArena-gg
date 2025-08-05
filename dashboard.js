@@ -200,62 +200,65 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // MODIFIÉ : Nouvelle version pour mieux afficher les objets verrouillés
-    function renderProfileCustomization() {
-        if (!colorSelectionGrid || !badgeSelectionGrid) return;
+// MODIFIÉ : Nouvelle version pour mieux afficher les objets verrouillés
+function renderProfileCustomization() {
+    if (!colorSelectionGrid || !badgeSelectionGrid) return;
 
-        // Vider les grilles actuelles
-        colorSelectionGrid.innerHTML = '';
-        badgeSelectionGrid.innerHTML = '';
+    // Vider les grilles actuelles
+    colorSelectionGrid.innerHTML = '';
+    badgeSelectionGrid.innerHTML = '';
 
-        const userUnlockedColors = userCustomization.unlockedColors || [];
-        const userUnlockedBadges = userCustomization.unlockedBadges || [];
+    const userUnlockedColors = userCustomization.unlockedColors || [];
+    const userUnlockedBadges = userCustomization.unlockedBadges || [];
 
-        // --- Affichage de toutes les couleurs ---
-        Object.keys(colorClassMap).forEach(colorId => {
-            const swatch = document.createElement('div');
-            swatch.className = 'color-swatch';
-            swatch.dataset.colorId = colorId;
-            swatch.innerHTML = `<span class="${colorClassMap[colorId] || ''}">Aa</span>`;
+    // --- Affichage de toutes les couleurs ---
+    Object.keys(colorClassMap).forEach(colorId => {
+        const swatch = document.createElement('div');
+        swatch.className = 'color-swatch';
+        swatch.dataset.colorId = colorId;
+        swatch.innerHTML = `<span class="${colorClassMap[colorId] || ''}">Aa</span>`;
 
-            const isUnlocked = userUnlockedColors.includes(colorId);
+        const isUnlocked = userUnlockedColors.includes(colorId);
 
-            if (isUnlocked) {
-                if (colorId === userCustomization.activeColor) {
-                    swatch.classList.add('selected');
-                }
-            } else {
-                // On ajoute simplement la classe 'locked'. Le CSS s'occupera du cadenas.
-                swatch.classList.add('locked');
-                swatch.title = "Non débloqué";
+        if (isUnlocked) {
+            if (colorId === userCustomization.activeColor) {
+                swatch.classList.add('selected');
             }
-            colorSelectionGrid.appendChild(swatch);
-        });
+        } else {
+            // On ajoute simplement la classe 'locked'. Le CSS s'occupera du cadenas.
+            swatch.classList.add('locked');
+            swatch.title = "Non débloqué";
+        }
+        colorSelectionGrid.appendChild(swatch);
+    });
 
-        // --- Affichage de tous les badges ---
-        Object.keys(badgeImageMap).forEach(badgeId => {
-            const badgeSrc = badgeImageMap[badgeId];
-            if (!badgeSrc) return; 
+    // --- Affichage de tous les badges ---
+    Object.keys(badgeImageMap).forEach(badgeId => {
+        const badgeSrc = badgeImageMap[badgeId];
+        // On ne veut pas afficher "Aucun badge" comme une option à cadenasser
+        if (!badgeSrc) return; 
 
-            const container = document.createElement('div');
-            container.className = 'badge-icon-container';
-            container.dataset.badgeId = badgeId;
-            container.innerHTML = `<img src="${badgeSrc}" alt="Badge ${badgeId}">`;
+        const container = document.createElement('div');
+        container.className = 'badge-icon-container';
+        container.dataset.badgeId = badgeId;
+        container.innerHTML = `<img src="${badgeSrc}" alt="Badge ${badgeId}">`;
 
-            const isUnlocked = userUnlockedBadges.includes(badgeId);
+        const isUnlocked = userUnlockedBadges.includes(badgeId);
 
-            if (isUnlocked) {
-                if (badgeId === userCustomization.activeBadge) {
-                    container.classList.add('selected');
-                }
-            } else {
-                // On ajoute simplement la classe 'locked'. Le CSS s'occupera du cadenas.
-                container.classList.add('locked');
-                container.title = "Non débloqué";
+        if (isUnlocked) {
+            // Comportement normal pour un objet déverrouillé
+            if (badgeId === userCustomization.activeBadge) {
+                container.classList.add('selected');
             }
-            badgeSelectionGrid.appendChild(container);
-        });
-    }
+        } else {
+            // Appliquer le style "verrouillé"
+            container.classList.add('locked');
+            container.innerHTML += '<div class="lock-overlay">🔒</div>';
+            container.title = "Non débloqué";
+        }
+        badgeSelectionGrid.appendChild(container);
+    });
+}
     
     function updateUtcClock() {
         const now = new Date();
