@@ -26,10 +26,10 @@ app.post('/stripe-webhook', express.raw({type: 'application/json'}), async (req,
         if (username) {
             console.log(`Paiement réussi pour: ${username}. Mise à jour du statut premium et des objets.`);
             await usersCollection.updateOne(
-                { username: username }, 
-                { 
+                { username: username },
+                {
                     $set: { isPremium: true },
-                    $addToSet: { 
+                    $addToSet: {
                         unlockedColors: { $each: ['premium-gradient', 'supporter-gold'] },
                         unlockedBadges: { $each: ['premium', 'supporter-gold'] }
                     }
@@ -41,7 +41,7 @@ app.post('/stripe-webhook', express.raw({type: 'application/json'}), async (req,
 });
 
 app.use(express.json());
-app.use(express.static(__dirname)); 
+app.use(express.static(__dirname));
 
 const uri = process.env.MONGO_URI;
 if (!uri) throw new Error('La variable d\'environnement MONGO_URI est manquante.');
@@ -52,6 +52,7 @@ const client = new MongoClient(uri, {
 
 let usersCollection;
 let scrimsCollection;
+let tournamentsCollection;
 
 async function run() {
   try {
@@ -60,6 +61,7 @@ async function run() {
     const database = client.db("brawlarenaDB");
     usersCollection = database.collection("users");
     scrimsCollection = database.collection("scrims");
+    tournamentsCollection = database.collection("tournaments");
     app.listen(port, () => {
         console.log(`Serveur Express démarré sur http://localhost:${port}`);
     });
@@ -74,7 +76,7 @@ run();
 //      MIDDLEWARE DE SÉCURITÉ
 // ===============================================
 const isAdmin = (req, res, next) => {
-    const { requestingUser } = req.query; 
+    const { requestingUser } = req.query;
     if (requestingUser && requestingUser.toLowerCase() === 'brawlarena.gg') {
         next();
     } else {
@@ -95,26 +97,26 @@ app.post('/register', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis.' });
 
-    // MODIFICATION : Le point "." est maintenant autorisé dans le nom d'utilisateur.
     const validUsernameRegex = /^[A-Za-z0-9.]+$/;
     if (!validUsernameRegex.test(username)) {
         return res.status(400).json({ error: 'Pseudo invalide. Seuls les lettres, chiffres et points sont autorisés.' });
     }
-    
+
     const userExists = await usersCollection.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
     if (userExists) return res.status(409).json({ error: 'Ce nom d\'utilisateur est déjà pris.' });
 
-    const newUser = { 
-        username, 
-        password, 
-        isPremium: false, 
-        dailyScrims: 0, 
+    const newUser = {
+        username,
+        password,
+        isPremium: false,
+        dailyScrims: 0,
         lastActivityDate: new Date().toISOString().split('T')[0],
+        dailyTournaments: 0,
+        lastTournamentDate: null,
         isBannedPermanently: false,
         banExpiresAt: null,
         activeColor: 'default',
         activeBadge: 'none',
-        // Correction : Seuls les objets par défaut sont déverrouillés au départ
         unlockedColors: ['default'],
         unlockedBadges: ['none']
     };
@@ -136,12 +138,19 @@ app.post('/login', async (req, res) => {
         return res.status(403).json({ error: `Ce compte est banni temporairement jusqu'au ${expiryDate}.` });
     }
 
-    res.status(200).json({ 
-        message: 'Connexion réussie !', 
+    const today = new Date().toISOString().split('T')[0];
+    const userDailyStats = {
+        dailyScrims: user.lastActivityDate === today ? (user.dailyScrims || 0) : 0,
+        lastActivityDate: user.lastActivityDate,
+        dailyTournaments: user.lastTournamentDate === today ? (user.dailyTournaments || 0) : 0,
+        lastTournamentDate: user.lastTournamentDate
+    };
+
+    res.status(200).json({
+        message: 'Connexion réussie !',
         username: user.username,
         isPremium: user.isPremium,
-        dailyScrims: user.dailyScrims || 0,
-        lastActivityDate: user.lastActivityDate,
+        userDailyStats: userDailyStats,
         customization: {
             activeColor: user.activeColor || 'default',
             activeBadge: user.activeBadge || 'none',
@@ -161,7 +170,7 @@ app.get('/users', async (req, res) => {
 app.post('/premium/toggle', async (req, res) => {
     const { username } = req.body;
     if (!username) return res.status(400).json({ error: "Nom d'utilisateur manquant" });
-    
+
     const user = await usersCollection.findOne({ username });
     if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé.' });
 
@@ -190,22 +199,20 @@ app.post('/users/statuses', async (req, res) => {
         const { usernames } = req.body;
         if (!usernames || !Array.isArray(usernames)) { return res.status(400).json({ error: "Un tableau de noms d'utilisateurs est requis." }); }
         
-        // MODIFICATION : Ajout de unlockedColors et unlockedBadges à la projection
         const users = await usersCollection.find(
             { username: { $in: usernames } },
             { projection: { username: 1, isPremium: 1, activeColor: 1, activeBadge: 1, unlockedColors: 1, unlockedBadges: 1, _id: 0 } }
         ).toArray();
 
-        const statusMap = users.reduce((acc, user) => { 
+        const statusMap = users.reduce((acc, user) => {
             acc[user.username] = {
                 isPremium: user.isPremium,
                 activeColor: user.activeColor || 'default',
                 activeBadge: user.activeBadge || 'none',
-                // MODIFICATION : Ajout des objets déverrouillés à la réponse
                 unlockedColors: user.unlockedColors || ['default'],
                 unlockedBadges: user.unlockedBadges || ['none']
-            }; 
-            return acc; 
+            };
+            return acc;
         }, {});
         res.status(200).json(statusMap);
     } catch (error) { res.status(500).json({ error: "Erreur lors de la récupération des statuts." }); }
@@ -322,7 +329,7 @@ app.post('/create-checkout-session', async (req, res) => {
 // --- Administration ---
 app.get('/admin/users', isAdmin, async (req, res) => {
     try {
-        const users = await usersCollection.find({}, { 
+        const users = await usersCollection.find({}, {
             projection: { password: 0 }
         }).toArray();
         res.status(200).json(users);
@@ -434,4 +441,55 @@ app.patch('/scrims/:id/gameid', async (req, res) => {
         if (result.matchedCount === 0) return res.status(404).json({ error: 'Scrim non trouvé.' });
         res.status(200).json({ message: 'ID mis à jour' });
     } catch (error) { res.status(400).json({ error: 'ID de scrim invalide' }); }
+});
+
+// --- Tournois ---
+app.post('/tournaments', async (req, res) => {
+    const { creator, name, description, dateTime, format, maxParticipants, prize } = req.body;
+    if (!creator || !name || !dateTime || !format || !maxParticipants) {
+        return res.status(400).json({ error: "Informations manquantes pour créer le tournoi." });
+    }
+
+    const user = await usersCollection.findOne({ username: creator });
+    if (!user) return res.status(404).json({ error: "Utilisateur créateur introuvable." });
+    if (!user.isPremium) return res.status(403).json({ error: "Seuls les membres Premium peuvent créer des tournois." });
+
+    const today = new Date().toISOString().split('T')[0];
+    const dailyTournaments = user.lastTournamentDate === today ? (user.dailyTournaments || 0) : 0;
+
+    if (dailyTournaments >= 1) {
+        return res.status(403).json({ error: "Vous avez déjà créé votre tournoi pour aujourd'hui." });
+    }
+
+    const newTournament = {
+        creator,
+        name,
+        description,
+        dateTime: new Date(dateTime),
+        format,
+        maxParticipants,
+        prize,
+        participants: [creator],
+        createdAt: new Date()
+    };
+
+    await tournamentsCollection.insertOne(newTournament);
+    await usersCollection.updateOne(
+        { _id: user._id },
+        {
+            $set: { lastTournamentDate: today },
+            $inc: { dailyTournaments: 1 }
+        }
+    );
+
+    res.status(201).json({ message: 'Tournoi créé avec succès !', tournament: newTournament });
+});
+
+app.get('/tournaments', async (req, res) => {
+    try {
+        const allTournaments = await tournamentsCollection.find({}).sort({ dateTime: 1 }).toArray();
+        res.status(200).json(allTournaments);
+    } catch (error) {
+        res.status(500).json({ error: "Erreur lors de la récupération des tournois." });
+    }
 });

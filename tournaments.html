@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrawlArena.gg - Tournois</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="navbar">
+        <div class="logo-area">
+            <div class="logo">BrawlArena.gg</div>
+            <div id="utc-clock" class="utc-clock"></div>
+        </div>
+        <div class="user-info">
+            <div class="username-badge-container">
+                <span id="display-username" class="username-text"></span>
+                <span id="navbar-premium-badge"></span>
+            </div>
+            <a href="dashboard.html" id="dashboard-button" class="logout-button">Tableau de Bord</a>
+        </div>
+    </header>
+
+    <main class="content-area" style="margin: 25px auto; max-width: 1200px; width: 95%;">
+        <div class="section-header">
+            <h2>Liste des Tournois</h2>
+            <button id="show-tournament-modal-button" class="button" style="display: none;">Créer un Tournoi</button>
+        </div>
+        <div id="tournaments-list-container">
+            <p>Chargement des tournois...</p>
+        </div>
+    </main>
+
+    <div id="create-tournament-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="modal-close-button">&times;</span>
+            <h2>Créer un nouveau Tournoi</h2>
+            <form id="create-tournament-form">
+                <label for="tournament-name">Nom du tournoi :</label>
+                <input type="text" id="tournament-name" required>
+
+                <label for="tournament-description">Description (optionnel) :</label>
+                <input type="text" id="tournament-description">
+
+                <label for="tournament-datetime">Date et Heure :</label>
+                <input type="datetime-local" id="tournament-datetime" required>
+                
+                <label for="tournament-format">Format :</label>
+                <select id="tournament-format" required>
+                    <option value="1v1">1v1</option>
+                    <option value="3v3" selected>3v3</option>
+                </select>
+
+                <label for="tournament-participants">Nombre maximum de participants :</label>
+                <input type="number" id="tournament-participants" min="4" max="128" value="16" required>
+                
+                <label for="tournament-prize">Récompense (optionnel) :</label>
+                <input type="text" id="tournament-prize" placeholder="Ex: 10€ ou Rôle Discord">
+
+                <button type="submit">Créer le Tournoi</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="limit-prompt-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="modal-close-button">&times;</span>
+            <h2>Limite atteinte</h2>
+            <p>Vous avez déjà créé votre tournoi pour aujourd'hui. Revenez demain pour en organiser un nouveau !</p>
+            <div class="modal-actions">
+                <button class="button secondary-button">Compris</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="tournaments.js"></script>
+</body>
+</html>

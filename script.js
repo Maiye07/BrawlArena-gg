@@ -55,7 +55,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const username = document.getElementById('register-username').value;
         const password = document.getElementById('register-password').value;
 
-        // MODIFICATION : Le point "." est maintenant autorisé dans le nom d'utilisateur.
         const validUsernameRegex = /^[A-Za-z0-9.]+$/;
         if (!validUsernameRegex.test(username)) {
             showMessage('Pseudo invalide. Seuls les lettres, chiffres et points sont autorisés.', 'error');
@@ -101,11 +100,10 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('loggedInUsername', data.username);
             localStorage.setItem('isPremium', data.isPremium);
             
-            const userStats = {
-                dailyScrims: data.dailyScrims,
-                lastActivityDate: data.lastActivityDate
-            };
-            localStorage.setItem('userDailyStats', JSON.stringify(userStats));
+            // Sauvegarde l'objet complet des stats journalières
+            if (data.userDailyStats) {
+                localStorage.setItem('userDailyStats', JSON.stringify(data.userDailyStats));
+            }
 
             // Sauvegarde les données de personnalisation dans le localStorage
             if (data.customization) {

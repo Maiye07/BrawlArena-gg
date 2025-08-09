@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BrawlArena.gg - Bienvenue</title>
+    <title>BrawlArena.gg - Votre Arène Compétitive Brawl Stars</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,23 +14,52 @@
         <button id="show-auth-button" class="login-signup-button">Connexion / Inscription</button>
     </header>
 
-    <div id="welcome-section" class="container welcome-container">
-        <h1>Bienvenue sur BrawlArena.gg !</h1>
-        <p>Votre plateforme ultime pour les tournois et les scrims.</p>
-        <p>Cliquez sur "Connexion / Inscription" pour commencer.</p>
-    </div>
+    <main class="landing-page">
+        <section class="hero-section">
+            <h1>La Compétition Brawl Stars Commence Ici</h1>
+            <p class="subtitle">Organisez et rejoignez des scrims et tournois facilement. Prouvez votre talent et grimpez les échelons.</p>
+            <button id="hero-show-auth-button" class="button">Créez votre compte pour commencer</button>
+        </section>
+
+        <section class="features-section">
+            <h2>Pourquoi choisir BrawlArena.gg ?</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">⚔️</div>
+                    <h3>Scrims Simplifiés</h3>
+                    <p>Créez ou rejoignez un salon d'entraînement en quelques clics. Fini les recherches interminables sur Discord.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🏆</div>
+                    <h3>Tournois à Venir</h3>
+                    <p>Préparez-vous pour des tournois organisés avec classements et récompenses. La gloire vous attend !</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">✨</div>
+                    <h3>Avantages Premium</h3>
+                    <p>Passez au niveau supérieur avec la création de scrims illimitée et des fonctionnalités exclusives.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="community-callout">
+            <h2>Rejoignez une Communauté Active</h2>
+            <p>Discutez stratégie, trouvez des coéquipiers et restez informé des dernières nouveautés sur nos réseaux.</p>
+            <div class="social-links-landing">
+                <a href="https://discord.gg/xqB64Dug5t" target="_blank" class="social-button discord-button">Rejoindre le Discord</a>
+                <a href="https://www.twitch.tv/osooka" target="_blank" class="social-button twitch-button">Suivre sur Twitch</a>
+            </div>
+        </section>
+    </main>
 
     <div id="auth-container" class="container auth-container" style="display:none;">
-        
         <div id="register-section" style="display: none;">
             <h2>Créer un compte</h2>
             <form id="register-form">
                 <label for="register-username">Nom d'utilisateur :</label>
                 <input type="text" id="register-username" required>
-
                 <label for="register-password">Mot de passe :</label>
                 <input type="password" id="register-password" required>
-
                 <button type="submit">S'inscrire</button>
             </form>
             <p>Vous avez déjà un compte ? <a href="#" id="show-login">Connectez-vous</a></p>
@@ -41,17 +70,18 @@
             <form id="login-form">
                 <label for="login-username">Nom d'utilisateur :</label>
                 <input type="text" id="login-username" required>
-                
                 <label for="login-password">Mot de passe :</label>
                 <input type="password" id="login-password" required>
-
                 <button type="submit">Se connecter</button>
             </form>
             <p>Pas encore de compte ? <a href="#" id="show-register">Inscrivez-vous</a></p>
         </div>
-
         <p id="message"></p>
     </div>
+
+    <footer class="footer">
+        <p>&copy; 2025 BrawlArena.gg. Tous droits réservés.</p>
+    </footer>
 
     <script src="script.js"></script>
 </body>

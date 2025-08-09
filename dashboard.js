@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- CONFIGURATION & DONNÉES GLOBALES ---
     const API_URL = 'https://brawlarena-gg.onrender.com';
     let isCurrentUserPremium = localStorage.getItem('isPremium') === 'true';
-    let userDailyStats = JSON.parse(localStorage.getItem('userDailyStats')) || { dailyScrims: 0, lastActivityDate: new Date().toISOString().split('T')[0] };
+    let userDailyStats = JSON.parse(localStorage.getItem('userDailyStats')) || { dailyScrims: 0, lastActivityDate: new Date().toISOString().split('T')[0], dailyTournaments: 0, lastTournamentDate: null };
     let userCustomization = JSON.parse(localStorage.getItem('userCustomization')) || {
         activeColor: 'default',
         activeBadge: 'none',
@@ -46,7 +46,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const links = {
         profile: document.getElementById('profile-link'),
-        tournaments: document.getElementById('tournaments-link'),
         scrims: document.getElementById('scrims-link'),
         settings: document.getElementById('settings-link'),
         about: document.getElementById('about-link'),
@@ -316,7 +315,6 @@ function renderProfileCustomization() {
     links.scrims.addEventListener('click', (e) => { e.preventDefault(); renderScrims(); showSection('scrims'); });
     links.settings.addEventListener('click', (e) => { e.preventDefault(); showSection('settings'); });
     links.about.addEventListener('click', (e) => { e.preventDefault(); showSection('about'); });
-    links.tournaments.addEventListener('click', (e) => { e.preventDefault(); alert('La section Tournois est en cours de développement !'); });
     if (links.admin) {
         links.admin.addEventListener('click', (e) => { e.preventDefault(); renderAdminUsers(); showSection('admin'); });
     }
