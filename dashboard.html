@@ -46,115 +46,112 @@
         </aside>
 
         <main class="content-area">
-            <div id="dashboard-home-section">
-                <h1>Bienvenue, <span id="username-display">Invité</span> !</h1>
-                <p>Ceci est votre tableau de bord. Utilisez le menu à gauche pour naviguer.</p>
-            </div>
-
-            <div id="profile-section" style="display: none;">
-                <div class="profile-header">
-                    <h2>Profil de <span id="profile-username-placeholder"></span></h2>
+            <div id="sections-wrapper">
+                <div id="dashboard-home-section">
+                    <h1>Bienvenue, <span id="username-display">Invité</span> !</h1>
+                    <p>Ceci est votre tableau de bord. Utilisez le menu à gauche pour naviguer.</p>
                 </div>
 
-                <div class="profile-grid">
-                    <div class="profile-info-card">
-                        <h3>Informations</h3>
-                        <div id="profile-user-display" class="profile-user-display-lg">
-                           </div>
-                        <p><strong>Tag joueur :</strong> <span id="profile-player-id">Non défini</span></p>
-                        <hr>
-                        <h3>Statistiques</h3>
-                        <p><strong>Tournois participés :</strong> <span id="profile-tournaments-attended">0</span></p>
-                        <p><strong>Scrims participés :</strong> <span id="profile-scrims-attended">0</span></p>
-                        <p><strong>Tournois gagnés :</strong> <span id="profile-tournaments-won">0</span></p>
-                        <hr>
-                        <h3>Créations journalières</h3>
-                        <p>Tournois restants : <strong><span id="profile-daily-tournaments">N/A</span></strong></p>
-                        <p>Scrims restants : <strong><span id="profile-daily-scrims">2</span></strong></p>
+                <div id="profile-section" style="display: none;">
+                    <div class="profile-header">
+                        <h2>Profil de <span id="profile-username-placeholder"></span></h2>
                     </div>
 
-                    <div class="customization-card">
-                        <h3>Personnalisation</h3>
-                        
-                        <h4>Couleur du pseudo <span id="color-count-display"></span></h4>
-                        <div id="color-selection-grid" class="selection-grid">
-                            </div>
+                    <div class="profile-grid">
+                        <div class="profile-info-card">
+                            <h3>Informations</h3>
+                            <div id="profile-user-display" class="profile-user-display-lg"></div>
+                            <p><strong>Tag joueur :</strong> <span id="profile-player-id">Non défini</span></p>
+                            <hr>
+                            <h3>Statistiques</h3>
+                            <p><strong>Tournois participés :</strong> <span id="profile-tournaments-attended">0</span></p>
+                            <p><strong>Scrims participés :</strong> <span id="profile-scrims-attended">0</span></p>
+                            <p><strong>Tournois gagnés :</strong> <span id="profile-tournaments-won">0</span></p>
+                            <hr>
+                            <h3>Créations journalières</h3>
+                            <p>Tournois restants : <strong><span id="profile-daily-tournaments">N/A</span></strong></p>
+                            <p>Scrims restants : <strong><span id="profile-daily-scrims">2</span></strong></p>
+                        </div>
 
-                        <h4>Badges <span id="badge-count-display"></span></h4>
-                        <div id="badge-selection-grid" class="selection-grid">
-                            </div>
-                        
-                        <button id="save-customization-button" class="button">Sauvegarder les changements</button>
-                        <p id="customization-message"></p>
+                        <div class="customization-card">
+                            <h3>Personnalisation</h3>
+                            
+                            <h4>Couleur du pseudo <span id="color-count-display"></span></h4>
+                            <div id="color-selection-grid" class="selection-grid"></div>
+
+                            <h4>Badges <span id="badge-count-display"></span></h4>
+                            <div id="badge-selection-grid" class="selection-grid"></div>
+                            
+                            <button id="save-customization-button" class="button">Sauvegarder les changements</button>
+                            <p id="customization-message"></p>
+                        </div>
                     </div>
                 </div>
-            </div>
-            
-            <div id="settings-section" style="display: none;">
-                <h2>Paramètres du compte</h2>
-                <form id="supercell-id-form">
-                    <label for="player-id-input">Tag joueur ou pseudo en jeu Brawl Stars :</label>
-                    <input type="text" id="player-id-input" placeholder="Entrez votre Tag (ex: #LPUJCQ) ou pseudo">
-                    <button type="submit">Enregistrer</button>
-                </form>
-                <p id="settings-message"></p>
-                <hr>
                 
-                <h3>Gestion des comptes</h3>
-                <button id="show-users-button" class="button">Afficher la liste des comptes</button>
-                <div id="users-list-container" style="margin-top: 20px;"></div>
-                
-                <hr>
-                <h3>Statut Premium (Test)</h3>
-                <button id="toggle-premium-button" class="button">Activer/Désactiver Premium</button>
-            </div>
-
-            <div id="scrims-section" style="display: none;">
-                <div class="section-header">
-                    <h2>Scrims en cours</h2>
-                    <button id="show-scrim-modal-button" class="button">Créer un Scrim</button>
+                <div id="settings-section" style="display: none;">
+                    <h2>Paramètres du compte</h2>
+                    <form id="supercell-id-form">
+                        <label for="player-id-input">Tag joueur ou pseudo en jeu Brawl Stars :</label>
+                        <input type="text" id="player-id-input" placeholder="Entrez votre Tag (ex: #LPUJCQ) ou pseudo">
+                        <button type="submit">Enregistrer</button>
+                    </form>
+                    <p id="settings-message"></p>
+                    <hr>
+                    
+                    <h3>Gestion des comptes</h3>
+                    <button id="show-users-button" class="button">Afficher la liste des comptes</button>
+                    <div id="users-list-container" style="margin-top: 20px;"></div>
+                    
+                    <hr>
+                    <h3>Statut Premium (Test)</h3>
+                    <button id="toggle-premium-button" class="button">Activer/Désactiver Premium</button>
                 </div>
-                <div id="scrims-list-container"></div>
-            </div>
 
-            <div id="about-section" style="display: none;">
-                <h2>À propos de BrawlArena.gg</h2>
-                <p>BrawlArena.gg est une plateforme conçue par des passionnés pour des passionnés, visant à simplifier l'organisation de tournois et de scrims pour la communauté Brawl Stars.</p>
-                <p>Notre objectif est de fournir des outils simples et efficaces pour que les joueurs de tous niveaux puissent s'affronter et s'améliorer.</p>
-                <hr>
-
-                <h3>Remerciements Spéciaux</h3>
-                
-                <h4>Créateurs</h4>
-                <p>Ce projet a été imaginé et développé par :</p>
-                <ul>
-                    <li><strong>Maiye</strong></li>
-                    <li><strong>Osooka</strong></li>
-                </ul>
-
-                <h4>Mentions Spéciales</h4>
-                <p>Un grand merci à ceux qui ont soutenu le projet de près ou de loin :</p>
-                <div class="mentions-list">
-                    @hugoat, @Erwanglp, @Jungko, @Nelstacos, @Titi, @Tutur, @Maelanlachips, @keysowx, @shinyy, @Noubiman
-                </div>
-                <hr>
-
-                <h3>Soutenez le Projet</h3>
-                <p>Le maintien de la plateforme (serveurs, nom de domaine, développement) a un coût. Si vous appréciez BrawlArena.gg, envisagez de soutenir le projet. Chaque contribution, même la plus petite, est grandement appréciée !</p>
-                <a href="[VOTRE_LIEN_KO-FI_ICI]" target="_blank" class="social-button kofi-button">
-                    <img src="https://storage.ko-fi.com/cdn/cup-border.png" alt="Ko-fi logo" style="height: 20px; vertical-align: middle; margin-right: 8px;">
-                    Offrir un café sur Ko-fi
-                </a>
-            </div>
-            
-            <div id="admin-section" style="display: none;">
-                <h2>Panneau d'Administration</h2>
-                <p>Gérez les utilisateurs de la plateforme.</p>
-                <input type="text" id="admin-user-search" class="search-bar" placeholder="Rechercher un utilisateur...">
-                <div id="admin-user-list-container">
+                <div id="scrims-section" style="display: none;">
+                    <div class="section-header">
+                        <h2>Scrims en cours</h2>
+                        <button id="show-scrim-modal-button" class="button">Créer un Scrim</button>
                     </div>
-            </div>
-        </main>
+                    <div id="scrims-list-container"></div>
+                </div>
+
+                <div id="about-section" style="display: none;">
+                    <h2>À propos de BrawlArena.gg</h2>
+                    <p>BrawlArena.gg est une plateforme conçue par des passionnés pour des passionnés, visant à simplifier l'organisation de tournois et de scrims pour la communauté Brawl Stars.</p>
+                    <p>Notre objectif est de fournir des outils simples et efficaces pour que les joueurs de tous niveaux puissent s'affronter et s'améliorer.</p>
+                    <hr>
+
+                    <h3>Remerciements Spéciaux</h3>
+                    
+                    <h4>Créateurs</h4>
+                    <p>Ce projet a été imaginé et développé par :</p>
+                    <ul>
+                        <li><strong>Maiye</strong></li>
+                        <li><strong>Osooka</strong></li>
+                    </ul>
+
+                    <h4>Mentions Spéciales</h4>
+                    <p>Un grand merci à ceux qui ont soutenu le projet de près ou de loin :</p>
+                    <div class="mentions-list">
+                        @hugoat, @Erwanglp, @Jungko, @Nelstacos, @Titi, @Tutur, @Maelanlachips, @keysowx, @shinyy, @Noubiman
+                    </div>
+                    <hr>
+
+                    <h3>Soutenez le Projet</h3>
+                    <p>Le maintien de la plateforme (serveurs, nom de domaine, développement) a un coût. Si vous appréciez BrawlArena.gg, envisagez de soutenir le projet. Chaque contribution, même la plus petite, est grandement appréciée !</p>
+                    <a href="#" target="_blank" class="social-button kofi-button">
+                        <img src="https://storage.ko-fi.com/cdn/cup-border.png" alt="Ko-fi logo" style="height: 20px; vertical-align: middle; margin-right: 8px;">
+                        Offrir un café sur Ko-fi
+                    </a>
+                </div>
+                
+                <div id="admin-section" style="display: none;">
+                    <h2>Panneau d'Administration</h2>
+                    <p>Gérez les utilisateurs de la plateforme.</p>
+                    <input type="text" id="admin-user-search" class="search-bar" placeholder="Rechercher un utilisateur...">
+                    <div id="admin-user-list-container"></div>
+                </div>
+            </div> </main>
     </div>
 
     <div id="create-scrim-modal" class="modal" style="display: none;">
