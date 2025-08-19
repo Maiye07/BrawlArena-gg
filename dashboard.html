@@ -151,7 +151,8 @@
                     <input type="text" id="admin-user-search" class="search-bar" placeholder="Rechercher un utilisateur...">
                     <div id="admin-user-list-container"></div>
                 </div>
-            </div> </main>
+            </div>
+        </main>
     </div>
 
     <div id="create-scrim-modal" class="modal" style="display: none;">
@@ -201,6 +202,31 @@
             <div class="modal-actions">
                 <a href="premium.html" class="button premium-cta-button">✨ Devenir Premium</a>
                 <button class="button secondary-button">Non, merci</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="admin-manage-customization-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="modal-close-button">&times;</span>
+            <h2>Gérer les cosmétiques de <span id="customization-modal-username"></span></h2>
+            
+            <input type="hidden" id="editing-username-hidden">
+
+            <div class="customization-section">
+                <h4>Couleurs débloquées</h4>
+                <div id="admin-colors-list" class="selection-grid" style="max-height: 200px; overflow-y: auto; padding: 10px; background-color: var(--bg-dark); border-radius: 6px;">
+                    </div>
+            </div>
+
+            <div class="customization-section" style="margin-top: 20px;">
+                <h4>Badges débloqués</h4>
+                <div id="admin-badges-list" class="selection-grid" style="max-height: 200px; overflow-y: auto; padding: 10px; background-color: var(--bg-dark); border-radius: 6px;">
+                    </div>
+            </div>
+
+            <div class="modal-actions">
+                <button id="admin-save-customizations-button" class="button">Sauvegarder</button>
             </div>
         </div>
     </div>

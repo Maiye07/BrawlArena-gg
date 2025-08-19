@@ -9,6 +9,7 @@ const port = 3000;
 
 app.use(cors());
 
+// Webhook Stripe doit être avant express.json()
 app.post('/stripe-webhook', express.raw({type: 'application/json'}), async (req, res) => {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!webhookSecret) return res.status(400).send('Webhook secret not configured.');
@@ -73,10 +74,11 @@ async function run() {
 run();
 
 // ===============================================
-//      MIDDLEWARE DE SÉCURITÉ
+//      MIDDLEWARE DE SÉCURITÉ (AMÉLIORÉ)
 // ===============================================
 const isAdmin = (req, res, next) => {
-    const { requestingUser } = req.query;
+    // Vérifie le corps de la requête (pour POST) et les paramètres de la requête (pour GET)
+    const requestingUser = req.body.requestingUser || req.query.requestingUser;
     if (requestingUser && requestingUser.toLowerCase() === 'brawlarena.gg') {
         next();
     } else {
@@ -160,13 +162,7 @@ app.post('/login', async (req, res) => {
     });
 });
 
-app.get('/users', async (req, res) => {
-    const { requestingUser } = req.query;
-    if (!requestingUser || requestingUser.trim().toLowerCase() !== 'brawlarena.gg') { return res.status(403).json({ error: 'Accès réservé à l\'administrateur.' }); }
-    const users = await usersCollection.find({}, { projection: { username: 1, _id: 0 } }).toArray();
-    res.status(200).json(users);
-});
-
+// Route pour le bouton de test "Activer/Désactiver Premium"
 app.post('/premium/toggle', async (req, res) => {
     const { username } = req.body;
     if (!username) return res.status(400).json({ error: "Nom d'utilisateur manquant" });
@@ -264,7 +260,7 @@ app.post('/create-checkout-session', async (req, res) => {
         return res.status(400).json({ error: 'Informations de plan manquantes.' });
     }
 
-    const appUrl = process.env.YOUR_APP_URL || 'http://localhost:5500';
+    const appUrl = process.env.YOUR_APP_URL || `http://localhost:${port}`;
     let lineItem = {};
     let sessionMode = 'payment';
 
@@ -330,7 +326,7 @@ app.post('/create-checkout-session', async (req, res) => {
 app.get('/admin/users', isAdmin, async (req, res) => {
     try {
         const users = await usersCollection.find({}, {
-            projection: { password: 0 }
+            projection: { password: 0 } // Exclut les mots de passe de la réponse
         }).toArray();
         res.status(200).json(users);
     } catch (error) {
@@ -366,6 +362,31 @@ app.post('/admin/ban', isAdmin, async (req, res) => {
 
     } catch (error) {
         res.status(500).json({ error: "Erreur lors de l'opération de bannissement." });
+    }
+});
+
+// NOUVELLE ROUTE POUR LA GESTION DES COSMÉTIQUES
+app.post('/admin/user/customizations', isAdmin, async (req, res) => {
+    const { username, colors, badges } = req.body;
+
+    if (!username || !Array.isArray(colors) || !Array.isArray(badges)) {
+        return res.status(400).json({ error: "Données invalides. 'username', 'colors', et 'badges' sont requis." });
+    }
+
+    try {
+        const result = await usersCollection.updateOne(
+            { username: username },
+            { $set: { unlockedColors: colors, unlockedBadges: badges } }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: 'Utilisateur non trouvé.' });
+        }
+
+        res.status(200).json({ message: `Les cosmétiques de ${username} ont été mis à jour.` });
+    } catch (error) {
+        console.error("Erreur dans /admin/user/customizations:", error);
+        res.status(500).json({ error: "Erreur serveur lors de la mise à jour." });
     }
 });
 

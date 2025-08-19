@@ -13,9 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let userCustomization = JSON.parse(localStorage.getItem('userCustomization')) || {
         activeColor: 'default',
         activeBadge: 'none',
-        unlockedColors: ['default', 'premium-gradient'],
-        unlockedBadges: ['none', 'premium']
+        unlockedColors: ['default'],
+        unlockedBadges: ['none']
     };
+    let allUsersData = []; // Pour stocker les données des utilisateurs pour l'admin
 
     const colorClassMap = {
         'default': 'username-color-default',
@@ -75,12 +76,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const playerIdInput = document.getElementById('player-id-input');
     const settingsMessage = document.getElementById('settings-message');
 
-    const showUsersButton = document.getElementById('show-users-button');
-    const usersListContainer = document.getElementById('users-list-container');
-
+    // --- Éléments Admin ---
     const adminLinkLi = document.getElementById('admin-link-li');
     const adminUserListContainer = document.getElementById('admin-user-list-container');
     const adminUserSearch = document.getElementById('admin-user-search');
+    const adminCustomizationModal = document.getElementById('admin-manage-customization-modal');
+
 
     // --- FONCTIONS ---
 
@@ -197,71 +198,71 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-function renderProfileCustomization() {
-    if (!colorSelectionGrid || !badgeSelectionGrid) return;
+    function renderProfileCustomization() {
+        if (!colorSelectionGrid || !badgeSelectionGrid) return;
 
-    const colorCountDisplaySpan = document.getElementById('color-count-display');
-    const badgeCountDisplaySpan = document.getElementById('badge-count-display');
+        const colorCountDisplaySpan = document.getElementById('color-count-display');
+        const badgeCountDisplaySpan = document.getElementById('badge-count-display');
 
-    colorSelectionGrid.innerHTML = '';
-    badgeSelectionGrid.innerHTML = '';
+        colorSelectionGrid.innerHTML = '';
+        badgeSelectionGrid.innerHTML = '';
 
-    const userUnlockedColors = userCustomization.unlockedColors || [];
-    const userUnlockedBadges = userCustomization.unlockedBadges || [];
+        const userUnlockedColors = userCustomization.unlockedColors || [];
+        const userUnlockedBadges = userCustomization.unlockedBadges || [];
 
-    const totalColors = Object.keys(colorClassMap).length;
-    const unlockedColorsCount = userUnlockedColors.length;
-    if (colorCountDisplaySpan) {
-        colorCountDisplaySpan.textContent = `(${unlockedColorsCount}/${totalColors})`;
-    }
-
-    Object.keys(colorClassMap).forEach(colorId => {
-        const swatch = document.createElement('div');
-        swatch.className = 'color-swatch';
-        swatch.dataset.colorId = colorId;
-        swatch.innerHTML = `<span class="${colorClassMap[colorId] || ''}">Aa</span>`;
-
-        const isUnlocked = userUnlockedColors.includes(colorId);
-
-        if (isUnlocked) {
-            if (colorId === userCustomization.activeColor) {
-                swatch.classList.add('selected');
-            }
-        } else {
-            swatch.classList.add('locked');
-            swatch.title = "Non débloqué";
+        const totalColors = Object.keys(colorClassMap).length;
+        const unlockedColorsCount = userUnlockedColors.length;
+        if (colorCountDisplaySpan) {
+            colorCountDisplaySpan.textContent = `(${unlockedColorsCount}/${totalColors})`;
         }
-        colorSelectionGrid.appendChild(swatch);
-    });
 
-    const totalBadges = Object.keys(badgeImageMap).length - 1; 
-    const unlockedBadgesCount = userUnlockedBadges.length - (userUnlockedBadges.includes('none') ? 1 : 0);
-    if (badgeCountDisplaySpan) {
-        badgeCountDisplaySpan.textContent = `(${unlockedBadgesCount}/${totalBadges})`;
-    }
+        Object.keys(colorClassMap).forEach(colorId => {
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch';
+            swatch.dataset.colorId = colorId;
+            swatch.innerHTML = `<span class="${colorClassMap[colorId] || ''}">Aa</span>`;
 
-    Object.keys(badgeImageMap).forEach(badgeId => {
-        const badgeSrc = badgeImageMap[badgeId];
-        if (!badgeSrc) return; 
+            const isUnlocked = userUnlockedColors.includes(colorId);
 
-        const container = document.createElement('div');
-        container.className = 'badge-icon-container';
-        container.dataset.badgeId = badgeId;
-        container.innerHTML = `<img src="${badgeSrc}" alt="Badge ${badgeId}">`;
-
-        const isUnlocked = userUnlockedBadges.includes(badgeId);
-
-        if (isUnlocked) {
-            if (badgeId === userCustomization.activeBadge) {
-                container.classList.add('selected');
+            if (isUnlocked) {
+                if (colorId === userCustomization.activeColor) {
+                    swatch.classList.add('selected');
+                }
+            } else {
+                swatch.classList.add('locked');
+                swatch.title = "Non débloqué";
             }
-        } else {
-            container.classList.add('locked');
-            container.title = "Non débloqué";
+            colorSelectionGrid.appendChild(swatch);
+        });
+
+        const totalBadges = Object.keys(badgeImageMap).length - 1; 
+        const unlockedBadgesCount = userUnlockedBadges.length - (userUnlockedBadges.includes('none') ? 1 : 0);
+        if (badgeCountDisplaySpan) {
+            badgeCountDisplaySpan.textContent = `(${unlockedBadgesCount}/${totalBadges})`;
         }
-        badgeSelectionGrid.appendChild(container);
-    });
-}
+
+        Object.keys(badgeImageMap).forEach(badgeId => {
+            const badgeSrc = badgeImageMap[badgeId];
+            if (!badgeSrc) return; 
+
+            const container = document.createElement('div');
+            container.className = 'badge-icon-container';
+            container.dataset.badgeId = badgeId;
+            container.innerHTML = `<img src="${badgeSrc}" alt="Badge ${badgeId}">`;
+
+            const isUnlocked = userUnlockedBadges.includes(badgeId);
+
+            if (isUnlocked) {
+                if (badgeId === userCustomization.activeBadge) {
+                    container.classList.add('selected');
+                }
+            } else {
+                container.classList.add('locked');
+                container.title = "Non débloqué";
+            }
+            badgeSelectionGrid.appendChild(container);
+        });
+    }
     
     function updateUtcClock() {
         const now = new Date();
@@ -277,37 +278,88 @@ function renderProfileCustomization() {
         }
     }
     
-    async function renderAdminUsers() {
+    // --- LOGIQUE DE L'ADMINISTRATION (RÉNOVÉE) ---
+
+    async function renderAdminUsers(filter = '') {
         adminUserListContainer.innerHTML = `<p>Chargement...</p>`;
         try {
             const response = await fetch(`${API_URL}/admin/users?requestingUser=${loggedInUsername}`);
             if (!response.ok) throw new Error((await response.json()).error || 'Erreur de chargement.');
             
-            const users = await response.json();
-            let usersHTML = users.filter(user => user.username.toLowerCase() !== 'brawlarena.gg').map(user => {
+            allUsersData = await response.json(); // Stocke les données
+            
+            const filteredUsers = allUsersData.filter(user => 
+                user.username.toLowerCase().includes(filter.toLowerCase()) && 
+                user.username.toLowerCase() !== 'brawlarena.gg'
+            );
+
+            let usersHTML = filteredUsers.map(user => {
                 let statusHTML = '<span class="status-ok">Actif</span>';
-                let actionsHTML = `<button class="button ban-temp-btn" data-username="${user.username}">Ban Temp</button> <button class="button ban-perm-btn" data-username="${user.username}">Ban Perm</button>`;
+                let banActions = `<button class="button ban-perm-btn" data-username="${user.username}">Ban Perm</button>`;
 
                 if (user.isBannedPermanently) {
                     statusHTML = '<span class="status-banned">Banni Permanent</span>';
-                    actionsHTML = `<button class="button unban-btn" data-username="${user.username}">Débannir</button>`;
+                    banActions = `<button class="button unban-btn" data-username="${user.username}">Débannir</button>`;
                 } else if (user.banExpiresAt && new Date(user.banExpiresAt) > new Date()) {
                     statusHTML = `<span class="status-banned">Banni (jusqu'au ${new Date(user.banExpiresAt).toLocaleDateString('fr-FR')})</span>`;
-                    actionsHTML = `<button class="button unban-btn" data-username="${user.username}">Débannir</button>`;
+                    banActions = `<button class="button unban-btn" data-username="${user.username}">Débannir</button>`;
                 }
                 
                 return `<div class="admin-user-row">
                           <span class="admin-user-info"><strong>${user.username}</strong> ${user.isPremium ? '<span>- 👑 Premium</span>' : ''}</span>
                           <span class="admin-user-status">${statusHTML}</span>
-                          <span class="admin-user-actions">${actionsHTML}</span>
+                          <span class="admin-user-actions">
+                            <button class="button manage-cosmetics-btn" data-username="${user.username}">Gérer</button>
+                            ${banActions}
+                          </span>
                         </div>`;
             }).join('');
             
-            adminUserListContainer.innerHTML = `<div class="admin-user-table">${usersHTML}</div>`;
+            adminUserListContainer.innerHTML = `<div class="admin-user-table">${usersHTML || '<p>Aucun utilisateur trouvé.</p>'}</div>`;
         } catch (error) {
             adminUserListContainer.innerHTML = `<p class="error">${error.message}</p>`;
         }
     }
+
+    // Ouvre la modale de gestion des cosmétiques
+    function openCustomizationModal(username) {
+        const user = allUsersData.find(u => u.username === username);
+        if (!user) {
+            alert("Utilisateur non trouvé !");
+            return;
+        }
+
+        document.getElementById('customization-modal-username').textContent = user.username;
+        document.getElementById('editing-username-hidden').value = user.username;
+        
+        const colorsContainer = document.getElementById('admin-colors-list');
+        const badgesContainer = document.getElementById('admin-badges-list');
+        
+        colorsContainer.innerHTML = '';
+        badgesContainer.innerHTML = '';
+
+        // Peupler les couleurs
+        Object.keys(colorClassMap).forEach(colorId => {
+            const isUnlocked = user.unlockedColors.includes(colorId);
+            const label = document.createElement('label');
+            label.className = 'checkbox-label';
+            label.innerHTML = `<input type="checkbox" value="${colorId}" ${isUnlocked ? 'checked' : ''}> <span class="${colorClassMap[colorId]}">${colorId}</span>`;
+            colorsContainer.appendChild(label);
+        });
+        
+        // Peupler les badges
+        Object.keys(badgeImageMap).forEach(badgeId => {
+            if (badgeId === 'none') return; // Le badge 'none' est implicite
+            const isUnlocked = user.unlockedBadges.includes(badgeId);
+            const label = document.createElement('label');
+            label.className = 'checkbox-label';
+            label.innerHTML = `<input type="checkbox" value="${badgeId}" ${isUnlocked ? 'checked' : ''}> <img src="${badgeImageMap[badgeId]}" style="width:20px; height:20px; vertical-align:middle; margin-right: 5px;"> ${badgeId}`;
+            badgesContainer.appendChild(label);
+        });
+
+        adminCustomizationModal.style.display = 'flex';
+    }
+
 
     // --- GESTIONNAIRES D'ÉVÉNEMENTS ---
 
@@ -519,6 +571,7 @@ function renderProfileCustomization() {
     window.addEventListener('click', (e) => { 
         if (e.target == createScrimModal) createScrimModal.style.display = 'none';
         if (e.target == premiumPromptModal) premiumPromptModal.style.display = 'none';
+        if (e.target == adminCustomizationModal) adminCustomizationModal.style.display = 'none';
     });
     
     // Paramètres
@@ -534,6 +587,90 @@ function renderProfileCustomization() {
             settingsMessage.className = 'error';
         }
     });
+
+    // GESTIONNAIRE D'ÉVÉNEMENTS GLOBAL POUR LE PANNEAU ADMIN
+    adminUserListContainer.addEventListener('click', async (e) => {
+        const target = e.target.closest('button');
+        if (!target) return;
+
+        const username = target.dataset.username;
+        let action = '';
+        if (target.classList.contains('ban-perm-btn')) action = 'permanent';
+        if (target.classList.contains('unban-btn')) action = 'unban';
+        if (target.classList.contains('manage-cosmetics-btn')) {
+            openCustomizationModal(username);
+            return;
+        }
+
+        if (action && confirm(`Êtes-vous sûr de vouloir ${action === 'unban' ? 'débannir' : 'bannir'} ${username} ?`)) {
+            try {
+                const response = await fetch(`${API_URL}/admin/ban`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        requestingUser: loggedInUsername,
+                        usernameToBan: username,
+                        type: action
+                    })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error);
+                alert(data.message);
+                await renderAdminUsers(adminUserSearch.value); // Rafraîchit la liste
+            } catch (error) {
+                alert(`Erreur: ${error.message}`);
+            }
+        }
+    });
+
+    // Sauvegarde des changements dans la modale de cosmétiques
+    document.getElementById('admin-save-customizations-button').addEventListener('click', async () => {
+        const username = document.getElementById('editing-username-hidden').value;
+        const colorsContainer = document.getElementById('admin-colors-list');
+        const badgesContainer = document.getElementById('admin-badges-list');
+        
+        const selectedColors = ['default']; // 'default' est toujours inclus
+        colorsContainer.querySelectorAll('input[type="checkbox"]:checked').forEach(input => {
+            if (input.value !== 'default') selectedColors.push(input.value);
+        });
+        
+        const selectedBadges = ['none']; // 'none' est toujours inclus
+        badgesContainer.querySelectorAll('input[type="checkbox"]:checked').forEach(input => {
+             if (input.value !== 'none') selectedBadges.push(input.value);
+        });
+
+        try {
+            const response = await fetch(`${API_URL}/admin/user/customizations`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    requestingUser: loggedInUsername,
+                    username,
+                    colors: selectedColors,
+                    badges: selectedBadges
+                })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error);
+
+            alert(data.message);
+            adminCustomizationModal.style.display = 'none';
+
+        } catch (error) {
+            alert(`Erreur: ${error.message}`);
+        }
+    });
+
+    // Fermeture de la modale de cosmétiques
+    adminCustomizationModal.querySelector('.modal-close-button').addEventListener('click', () => {
+        adminCustomizationModal.style.display = 'none';
+    });
+    
+    // Recherche d'utilisateur admin
+    if (adminUserSearch) {
+        adminUserSearch.addEventListener('input', () => renderAdminUsers(adminUserSearch.value));
+    }
+
 
     // --- INITIALISATION DE LA PAGE ---
 
