@@ -1089,6 +1089,17 @@ a:hover {
     animation: wave-animation 3s linear infinite;
 }
 
+/* Nouveau dégradé Modérateur */
+.username-color-moderator-gradient {
+    background: linear-gradient(90deg, #00BFFF, #34D399, #FFD700, #00BFFF);
+    background-size: 200% auto;
+    color: #fff;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: wave-animation 4s linear infinite;
+}
+
 /* Ajoutez d'autres couleurs ici */
 .username-color-supporter-gold {
     color: #FFD700;

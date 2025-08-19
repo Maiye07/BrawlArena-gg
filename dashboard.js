@@ -21,11 +21,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const colorClassMap = {
         'default': 'username-color-default',
         'premium-gradient': 'username-color-premium-gradient',
-        'supporter-gold': 'username-color-supporter-gold'
+        'supporter-gold': 'username-color-supporter-gold',
+        'moderator-gradient': 'username-color-moderator-gradient'
     };
     const badgeImageMap = {
         'none': null,
-        'premium': 'images/Certif.png'
+        'premium': 'images/Certif.png',
+        'supporter-gold': 'images/supporter.png',
+        'moderator': 'images/moderator.png'
     };
 
     // --- SÉLECTION DES ÉLÉMENTS DU DOM ---
@@ -81,6 +84,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminUserListContainer = document.getElementById('admin-user-list-container');
     const adminUserSearch = document.getElementById('admin-user-search');
     const adminCustomizationModal = document.getElementById('admin-manage-customization-modal');
+    const adminBanModal = document.getElementById('admin-ban-modal');
+    const banModalUsername = document.getElementById('ban-modal-username');
+    const banningUsernameHidden = document.getElementById('banning-username-hidden');
+    const banDurationContainer = document.getElementById('ban-duration-container');
+    const banTypeTempRadio = document.getElementById('ban-type-temp');
+    const banTypePermRadio = document.getElementById('ban-type-perm');
+    const banDurationInput = document.getElementById('ban-duration-days');
+    const confirmBanButton = document.getElementById('admin-confirm-ban-button');
 
 
     // --- FONCTIONS ---
@@ -243,7 +254,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         Object.keys(badgeImageMap).forEach(badgeId => {
             const badgeSrc = badgeImageMap[badgeId];
-            if (!badgeSrc) return; 
+            if (!badgeSrc && badgeId !== 'none') return; 
+
+            if (badgeId === 'none') return; // Do not render the 'none' badge selector visually
 
             const container = document.createElement('div');
             container.className = 'badge-icon-container';
@@ -294,8 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
             );
 
             let usersHTML = filteredUsers.map(user => {
-                let statusHTML = '<span class="status-ok">Actif</span>';
-                let banActions = `<button class="button ban-perm-btn" data-username="${user.username}">Ban Perm</button>`;
+                let statusHTML, banActions;
 
                 if (user.isBannedPermanently) {
                     statusHTML = '<span class="status-banned">Banni Permanent</span>';
@@ -303,6 +315,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (user.banExpiresAt && new Date(user.banExpiresAt) > new Date()) {
                     statusHTML = `<span class="status-banned">Banni (jusqu'au ${new Date(user.banExpiresAt).toLocaleDateString('fr-FR')})</span>`;
                     banActions = `<button class="button unban-btn" data-username="${user.username}">Débannir</button>`;
+                } else {
+                    statusHTML = '<span class="status-ok">Actif</span>';
+                    banActions = `<button class="button ban-user-btn" data-username="${user.username}">Ban</button>`;
                 }
                 
                 return `<div class="admin-user-row">
@@ -431,7 +446,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (saveCustomizationButton) {
         saveCustomizationButton.addEventListener('click', async () => {
             const newColor = colorSelectionGrid.querySelector('.selected')?.dataset.colorId || userCustomization.activeColor;
-            const newBadge = badgeSelectionGrid.querySelector('.selected')?.dataset.badgeId || 'none';
+            const selectedBadgeEl = badgeSelectionGrid.querySelector('.selected');
+            const newBadge = selectedBadgeEl ? selectedBadgeEl.dataset.badgeId : 'none';
 
             try {
                 saveCustomizationButton.disabled = true;
@@ -483,8 +499,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const target = e.target.closest('.badge-icon-container');
         if (target && !target.classList.contains('locked')) {
             const currentSelected = badgeSelectionGrid.querySelector('.selected');
-            if (currentSelected === target) currentSelected.classList.remove('selected');
-            else {
+            if (currentSelected === target) { // If clicking the already selected one, deselect it
+                currentSelected.classList.remove('selected');
+            } else {
                 currentSelected?.classList.remove('selected');
                 target.classList.add('selected');
             }
@@ -572,6 +589,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target == createScrimModal) createScrimModal.style.display = 'none';
         if (e.target == premiumPromptModal) premiumPromptModal.style.display = 'none';
         if (e.target == adminCustomizationModal) adminCustomizationModal.style.display = 'none';
+        if (e.target == adminBanModal) adminBanModal.style.display = 'none';
     });
     
     // Paramètres
@@ -592,36 +610,112 @@ document.addEventListener('DOMContentLoaded', () => {
     adminUserListContainer.addEventListener('click', async (e) => {
         const target = e.target.closest('button');
         if (!target) return;
-
+    
         const username = target.dataset.username;
-        let action = '';
-        if (target.classList.contains('ban-perm-btn')) action = 'permanent';
-        if (target.classList.contains('unban-btn')) action = 'unban';
+    
         if (target.classList.contains('manage-cosmetics-btn')) {
             openCustomizationModal(username);
             return;
         }
-
-        if (action && confirm(`Êtes-vous sûr de vouloir ${action === 'unban' ? 'débannir' : 'bannir'} ${username} ?`)) {
-            try {
-                const response = await fetch(`${API_URL}/admin/ban`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        requestingUser: loggedInUsername,
-                        usernameToBan: username,
-                        type: action
-                    })
-                });
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error);
-                alert(data.message);
-                await renderAdminUsers(adminUserSearch.value); // Rafraîchit la liste
-            } catch (error) {
-                alert(`Erreur: ${error.message}`);
+    
+        if (target.classList.contains('unban-btn')) {
+            if (confirm(`Êtes-vous sûr de vouloir débannir ${username} ?`)) {
+                try {
+                    const response = await fetch(`${API_URL}/admin/ban`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            requestingUser: loggedInUsername,
+                            usernameToBan: username,
+                            type: 'unban'
+                        })
+                    });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error);
+                    alert(data.message);
+                    await renderAdminUsers(adminUserSearch.value);
+                } catch (error) {
+                    alert(`Erreur: ${error.message}`);
+                }
             }
         }
+    
+        if (target.classList.contains('ban-user-btn')) {
+            banModalUsername.textContent = username;
+            banningUsernameHidden.value = username;
+            adminBanModal.style.display = 'flex';
+            // Réinitialiser l'état de la modale
+            banTypeTempRadio.checked = true;
+            banDurationContainer.style.display = 'block';
+            banDurationInput.value = 7;
+            document.getElementById('ban-modal-message').textContent = '';
+        }
     });
+
+    // Événements pour la modale de bannissement
+    banTypePermRadio.addEventListener('change', () => {
+        if (banTypePermRadio.checked) {
+            banDurationContainer.style.display = 'none';
+        }
+    });
+    banTypeTempRadio.addEventListener('change', () => {
+        if (banTypeTempRadio.checked) {
+            banDurationContainer.style.display = 'block';
+        }
+    });
+
+    adminBanModal.querySelector('.modal-close-button').addEventListener('click', () => {
+        adminBanModal.style.display = 'none';
+    });
+
+    confirmBanButton.addEventListener('click', async () => {
+        const usernameToBan = banningUsernameHidden.value;
+        const banType = document.querySelector('input[name="ban-type"]:checked').value;
+        const duration = banDurationInput.value;
+        const messageEl = document.getElementById('ban-modal-message');
+
+        if (banType === 'temporary' && (!duration || parseInt(duration) <= 0)) {
+            messageEl.textContent = 'Veuillez entrer une durée valide.';
+            messageEl.className = 'error';
+            return;
+        }
+        
+        const requestBody = {
+            requestingUser: loggedInUsername,
+            usernameToBan: usernameToBan,
+            type: banType,
+        };
+        
+        if (banType === 'temporary') {
+            requestBody.durationInDays = parseInt(duration);
+        }
+
+        try {
+            confirmBanButton.disabled = true;
+            confirmBanButton.textContent = 'Application...';
+            messageEl.textContent = '';
+
+            const response = await fetch(`${API_URL}/admin/ban`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error);
+
+            alert(data.message);
+            adminBanModal.style.display = 'none';
+            await renderAdminUsers(adminUserSearch.value);
+
+        } catch (error) {
+            messageEl.textContent = `Erreur: ${error.message}`;
+            messageEl.className = 'error';
+        } finally {
+            confirmBanButton.disabled = false;
+            confirmBanButton.textContent = 'Confirmer le bannissement';
+        }
+    });
+
 
     // Sauvegarde des changements dans la modale de cosmétiques
     document.getElementById('admin-save-customizations-button').addEventListener('click', async () => {
