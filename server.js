@@ -54,6 +54,7 @@ const client = new MongoClient(uri, {
 let usersCollection;
 let scrimsCollection;
 let tournamentsCollection;
+let teamsCollection; // Nouvelle collection pour les équipes
 
 async function run() {
   try {
@@ -63,6 +64,7 @@ async function run() {
     usersCollection = database.collection("users");
     scrimsCollection = database.collection("scrims");
     tournamentsCollection = database.collection("tournaments");
+    teamsCollection = database.collection("teams"); // Initialiser la collection des équipes
     app.listen(port, () => {
         console.log(`Serveur Express démarré sur http://localhost:${port}`);
     });
@@ -464,7 +466,7 @@ app.patch('/scrims/:id/gameid', async (req, res) => {
     } catch (error) { res.status(400).json({ error: 'ID de scrim invalide' }); }
 });
 
-// --- Tournois ---
+// --- Tournois (Modifié) & Équipes (Nouveau) ---
 app.post('/tournaments', async (req, res) => {
     const { creator, name, description, dateTime, format, maxParticipants, prize } = req.body;
     if (!creator || !name || !dateTime || !format || !maxParticipants) {
@@ -488,13 +490,15 @@ app.post('/tournaments', async (req, res) => {
         description,
         dateTime: new Date(dateTime),
         format,
-        maxParticipants,
+        maxParticipants, // Représente maintenant le nombre maximum d'équipes
         prize,
-        participants: [creator],
+        teams: [], // Stocke les références ObjectId aux équipes
+        status: 'Upcoming', // Valeurs possibles: Upcoming, Ongoing, Finished
+        bracket: null,
         createdAt: new Date()
     };
 
-    await tournamentsCollection.insertOne(newTournament);
+    const result = await tournamentsCollection.insertOne(newTournament);
     await usersCollection.updateOne(
         { _id: user._id },
         {
@@ -503,14 +507,140 @@ app.post('/tournaments', async (req, res) => {
         }
     );
 
-    res.status(201).json({ message: 'Tournoi créé avec succès !', tournament: newTournament });
+    res.status(201).json({ message: 'Tournoi créé avec succès !', tournament: { ...newTournament, _id: result.insertedId } });
 });
 
 app.get('/tournaments', async (req, res) => {
     try {
-        const allTournaments = await tournamentsCollection.find({}).sort({ dateTime: 1 }).toArray();
+        // Utiliser un pipeline d'agrégation pour récupérer les tournois et peupler les détails de leurs équipes
+        const allTournaments = await tournamentsCollection.aggregate([
+            { $sort: { dateTime: 1 } },
+            {
+                $lookup: {
+                    from: 'teams', // La collection avec laquelle joindre
+                    localField: 'teams', // Le tableau d'ObjectIds dans la collection des tournois
+                    foreignField: '_id', // Le champ _id dans la collection des équipes
+                    as: 'teamDetails' // Le nouveau champ de tableau à ajouter avec les données d'équipe peuplées
+                }
+            }
+        ]).toArray();
         res.status(200).json(allTournaments);
     } catch (error) {
         res.status(500).json({ error: "Erreur lors de la récupération des tournois." });
+    }
+});
+
+app.post('/tournaments/:id/bracket', async (req, res) => {
+    try {
+        const tournamentObjectId = new ObjectId(req.params.id);
+        const tournament = await tournamentsCollection.findOne({ _id: tournamentObjectId });
+        if (!tournament) return res.status(404).json({ error: 'Tournoi non trouvé.' });
+
+        const teams = await teamsCollection.find({ _id: { $in: tournament.teams } }).toArray();
+        if (teams.length < 2) return res.status(400).json({ error: 'Pas assez d\'équipes pour commencer.' });
+
+        // Mélanger les équipes de manière aléatoire
+        for (let i = teams.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [teams[i], teams[j]] = [teams[j], teams[i]];
+        }
+
+        const bracket = { rounds: [] };
+        const round1 = [];
+        for (let i = 0; i < teams.length; i += 2) {
+            if (teams[i + 1]) {
+                round1.push({
+                    match: i / 2 + 1,
+                    teams: [{ name: teams[i].name, id: teams[i]._id }, { name: teams[i + 1].name, id: teams[i + 1]._id }],
+                    winner: null
+                });
+            } else {
+                round1.push({ match: i / 2 + 1, teams: [{ name: teams[i].name, id: teams[i]._id }, { name: "BYE", id: null }], winner: teams[i]._id });
+            }
+        }
+        bracket.rounds.push(round1);
+
+        // Générer des espaces réservés pour les tours suivants
+        let numMatchesInNextRound = Math.floor(round1.length / 2);
+        while (numMatchesInNextRound >= 1) {
+            const nextRound = Array.from({ length: numMatchesInNextRound }, (_, i) => ({
+                match: i + 1, teams: [null, null], winner: null
+            }));
+            bracket.rounds.push(nextRound);
+            if (numMatchesInNextRound === 1) break;
+            numMatchesInNextRound = Math.floor(numMatchesInNextRound / 2);
+        }
+
+        await tournamentsCollection.updateOne({ _id: tournamentObjectId }, { $set: { status: 'Ongoing', bracket: bracket } });
+        res.status(200).json({ message: 'Arbre généré avec succès.', bracket });
+    } catch (error) {
+        res.status(500).json({ error: 'Erreur serveur lors de la génération de l\'arbre.' });
+    }
+});
+
+// --- Équipes (Nouveau) ---
+app.post('/teams', async (req, res) => {
+    const { tournamentId, teamName, creator, isPrivate, joinCode } = req.body;
+    if (!tournamentId || !teamName || !creator) {
+        return res.status(400).json({ error: 'Informations manquantes pour la création de l\'équipe.' });
+    }
+    if (isPrivate && !joinCode) {
+        return res.status(400).json({ error: 'Une équipe privée nécessite un code pour la rejoindre.' });
+    }
+
+    try {
+        const tournamentObjectId = new ObjectId(tournamentId);
+        const tournament = await tournamentsCollection.findOne({ _id: tournamentObjectId });
+        if (!tournament) return res.status(404).json({ error: 'Tournoi non trouvé.' });
+        if (tournament.teams.length >= tournament.maxParticipants) {
+             return res.status(403).json({ error: 'Ce tournoi est complet.' });
+        }
+
+        const userInAnotherTeam = await teamsCollection.findOne({ tournamentId: tournamentObjectId, members: creator });
+        if (userInAnotherTeam) {
+            return res.status(409).json({ error: 'Vous êtes déjà dans une équipe pour ce tournoi.' });
+        }
+
+        const newTeam = {
+            tournamentId: tournamentObjectId,
+            name: teamName,
+            creator,
+            members: [creator],
+            isPrivate: !!isPrivate,
+            joinCode: (isPrivate) ? joinCode : null
+        };
+
+        const result = await teamsCollection.insertOne(newTeam);
+        await tournamentsCollection.updateOne({ _id: tournamentObjectId }, { $push: { teams: result.insertedId } });
+
+        res.status(201).json(newTeam);
+    } catch (error) {
+        res.status(500).json({ error: 'Erreur serveur lors de la création de l\'équipe.' });
+    }
+});
+
+app.post('/teams/:id/join', async (req, res) => {
+    const { username, joinCode } = req.body;
+    if (!username) return res.status(400).json({ error: 'Nom d\'utilisateur manquant.' });
+
+    try {
+        const teamObjectId = new ObjectId(req.params.id);
+        const team = await teamsCollection.findOne({ _id: teamObjectId });
+
+        if (!team) return res.status(404).json({ error: 'Équipe non trouvée.' });
+        if (team.members.length >= 3) return res.status(403).json({ error: 'Cette équipe est complète.' });
+        if (team.isPrivate && team.joinCode !== joinCode) {
+            return res.status(403).json({ error: 'Code pour rejoindre incorrect.' });
+        }
+
+        const userInAnotherTeam = await teamsCollection.findOne({ tournamentId: team.tournamentId, members: username });
+        if (userInAnotherTeam) {
+            return res.status(409).json({ error: 'Vous êtes déjà dans une équipe pour ce tournoi.' });
+        }
+
+        await teamsCollection.updateOne({ _id: teamObjectId }, { $push: { members: username } });
+        res.status(200).json({ message: 'Équipe rejointe avec succès !' });
+    } catch (error) {
+        res.status(500).json({ error: 'Erreur serveur.' });
     }
 });

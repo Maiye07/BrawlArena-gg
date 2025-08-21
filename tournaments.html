@@ -5,6 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BrawlArena.gg - Tournois</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .teams-list-container { margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 10px; }
+        .team-entry { display: flex; justify-content: space-between; align-items: center; background-color: var(--bg-light); padding: 8px; border-radius: 4px; margin-bottom: 6px; }
+        .team-entry span { flex-grow: 1; }
+        .team-entry .button { font-size: 0.8em; padding: 5px 10px; }
+        .bracket-container { display: flex; overflow-x: auto; padding: 20px; background-color: var(--bg-dark); border-radius: 8px; }
+        .bracket-round { display: flex; flex-direction: column; justify-content: space-around; flex-shrink: 0; margin-right: 60px; }
+        .bracket-match { margin-bottom: 40px; position: relative; }
+        .bracket-team { background-color: var(--bg-light); padding: 10px 15px; border: 1px solid var(--border-color); border-radius: 4px; min-width: 180px; color: var(--text-light); }
+        .bracket-team.winner { border-color: var(--success-color); font-weight: bold; }
+        .bracket-team.bye { color: var(--text-dark); font-style: italic; }
+        .vs-text { margin: 2px 0; text-align: center; color: var(--text-dark); font-weight: bold; }
+    </style>
 </head>
 <body>
     <header class="navbar">
@@ -51,7 +64,7 @@
                     <option value="3v3" selected>3v3</option>
                 </select>
 
-                <label for="tournament-participants">Nombre maximum de participants :</label>
+                <label for="tournament-participants">Nombre maximum d'équipes :</label>
                 <input type="number" id="tournament-participants" min="4" max="128" value="16" required>
                 
                 <label for="tournament-prize">Récompense (optionnel) :</label>
@@ -61,7 +74,6 @@
             </form>
         </div>
     </div>
-
     <div id="limit-prompt-modal" class="modal" style="display: none;">
         <div class="modal-content">
             <span class="modal-close-button">&times;</span>
@@ -70,6 +82,49 @@
             <div class="modal-actions">
                 <button class="button secondary-button">Compris</button>
             </div>
+        </div>
+    </div>
+
+    <div id="create-team-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="modal-close-button">&times;</span>
+            <h2>Créer une Équipe</h2>
+            <form id="create-team-form">
+                <input type="hidden" id="team-tournament-id">
+                <label for="team-name">Nom de l'équipe :</label>
+                <input type="text" id="team-name" required>
+                <div style="display: flex; align-items: center; margin: 10px 0; text-align: left;">
+                  <input type="checkbox" id="team-is-private" style="width: auto; margin-right: 10px;">
+                  <label for="team-is-private" style="margin: 0;">Rendre l'équipe privée</label>
+                </div>
+                <div id="team-join-code-container" style="display: none;">
+                  <label for="team-join-code">Code pour rejoindre :</label>
+                  <input type="text" id="team-join-code" placeholder="Ex: SECRET123">
+                </div>
+                <button type="submit">Créer l'Équipe</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="join-private-team-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="modal-close-button">&times;</span>
+            <h2>Rejoindre une Équipe Privée</h2>
+            <form id="join-private-team-form">
+                <input type="hidden" id="join-team-id">
+                <label for="join-code-input">Code de l'équipe :</label>
+                <input type="text" id="join-code-input" required>
+                <button type="submit">Rejoindre</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="bracket-modal" class="modal" style="display: none; align-items: flex-start; overflow-y: auto;">
+        <div class="modal-content" style="max-width: 90vw; width: 1200px; margin-top: 50px;">
+            <span class="modal-close-button">&times;</span>
+            <h2 id="bracket-modal-title">Arbre du Tournoi</h2>
+            <div id="bracket-container">
+                </div>
         </div>
     </div>
 
