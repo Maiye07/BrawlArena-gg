@@ -42,7 +42,7 @@ app.post('/stripe-webhook', express.raw({type: 'application/json'}), async (req,
 });
 
 app.use(express.json());
-app.use(express.static(__dirname));
+
 
 const uri = process.env.MONGO_URI;
 if (!uri) throw new Error('La variable d\'environnement MONGO_URI est manquante.');
@@ -54,7 +54,7 @@ const client = new MongoClient(uri, {
 let usersCollection;
 let scrimsCollection;
 let tournamentsCollection;
-let teamsCollection; // Nouvelle collection pour les équipes
+let teamsCollection;
 
 async function run() {
   try {
@@ -64,7 +64,7 @@ async function run() {
     usersCollection = database.collection("users");
     scrimsCollection = database.collection("scrims");
     tournamentsCollection = database.collection("tournaments");
-    teamsCollection = database.collection("teams"); // Initialiser la collection des équipes
+    teamsCollection = database.collection("teams");
     app.listen(port, () => {
         console.log(`Serveur Express démarré sur http://localhost:${port}`);
     });
@@ -79,7 +79,6 @@ run();
 //      MIDDLEWARE DE SÉCURITÉ (AMÉLIORÉ)
 // ===============================================
 const isAdmin = (req, res, next) => {
-    // Vérifie le corps de la requête (pour POST) et les paramètres de la requête (pour GET)
     const requestingUser = req.body.requestingUser || req.query.requestingUser;
     if (requestingUser && requestingUser.toLowerCase() === 'brawlarena.gg') {
         next();
@@ -88,13 +87,9 @@ const isAdmin = (req, res, next) => {
     }
 };
 
-// ===============================================
-//      ROUTES API
-// ===============================================
-
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
+// =================================================================
+//      ROUTES API (DOIVENT ÊTRE DÉCLARÉES AVANT app.use(express.static))
+// =================================================================
 
 // --- Utilisateurs ---
 app.post('/register', async (req, res) => {
@@ -164,7 +159,6 @@ app.post('/login', async (req, res) => {
     });
 });
 
-// Route pour le bouton de test "Activer/Désactiver Premium"
 app.post('/premium/toggle', async (req, res) => {
     const { username } = req.body;
     if (!username) return res.status(400).json({ error: "Nom d'utilisateur manquant" });
@@ -328,7 +322,7 @@ app.post('/create-checkout-session', async (req, res) => {
 app.get('/admin/users', isAdmin, async (req, res) => {
     try {
         const users = await usersCollection.find({}, {
-            projection: { password: 0 } // Exclut les mots de passe de la réponse
+            projection: { password: 0 }
         }).toArray();
         res.status(200).json(users);
     } catch (error) {
@@ -367,7 +361,6 @@ app.post('/admin/ban', isAdmin, async (req, res) => {
     }
 });
 
-// NOUVELLE ROUTE POUR LA GESTION DES COSMÉTIQUES
 app.post('/admin/user/customizations', isAdmin, async (req, res) => {
     const { username, colors, badges } = req.body;
 
@@ -466,7 +459,7 @@ app.patch('/scrims/:id/gameid', async (req, res) => {
     } catch (error) { res.status(400).json({ error: 'ID de scrim invalide' }); }
 });
 
-// --- Tournois (Modifié) & Équipes (Nouveau) ---
+// --- Tournois & Équipes ---
 app.post('/tournaments', async (req, res) => {
     const { creator, name, description, dateTime, format, maxParticipants, prize } = req.body;
     if (!creator || !name || !dateTime || !format || !maxParticipants) {
@@ -485,26 +478,14 @@ app.post('/tournaments', async (req, res) => {
     }
 
     const newTournament = {
-        creator,
-        name,
-        description,
-        dateTime: new Date(dateTime),
-        format,
-        maxParticipants, // Représente maintenant le nombre maximum d'équipes
-        prize,
-        teams: [], // Stocke les références ObjectId aux équipes
-        status: 'Upcoming', // Valeurs possibles: Upcoming, Ongoing, Finished
-        bracket: null,
-        createdAt: new Date()
+        creator, name, description, dateTime: new Date(dateTime), format, maxParticipants, prize,
+        teams: [], status: 'Upcoming', bracket: null, createdAt: new Date()
     };
 
     const result = await tournamentsCollection.insertOne(newTournament);
     await usersCollection.updateOne(
         { _id: user._id },
-        {
-            $set: { lastTournamentDate: today },
-            $inc: { dailyTournaments: 1 }
-        }
+        { $set: { lastTournamentDate: today }, $inc: { dailyTournaments: 1 } }
     );
 
     res.status(201).json({ message: 'Tournoi créé avec succès !', tournament: { ...newTournament, _id: result.insertedId } });
@@ -512,21 +493,40 @@ app.post('/tournaments', async (req, res) => {
 
 app.get('/tournaments', async (req, res) => {
     try {
-        // Utiliser un pipeline d'agrégation pour récupérer les tournois et peupler les détails de leurs équipes
         const allTournaments = await tournamentsCollection.aggregate([
             { $sort: { dateTime: 1 } },
             {
                 $lookup: {
-                    from: 'teams', // La collection avec laquelle joindre
-                    localField: 'teams', // Le tableau d'ObjectIds dans la collection des tournois
-                    foreignField: '_id', // Le champ _id dans la collection des équipes
-                    as: 'teamDetails' // Le nouveau champ de tableau à ajouter avec les données d'équipe peuplées
+                    from: 'teams', localField: 'teams', foreignField: '_id', as: 'teamDetails'
                 }
             }
         ]).toArray();
         res.status(200).json(allTournaments);
     } catch (error) {
         res.status(500).json({ error: "Erreur lors de la récupération des tournois." });
+    }
+});
+
+app.get('/tournaments/:id', async (req, res) => {
+    try {
+        const tournamentObjectId = new ObjectId(req.params.id);
+        const tournament = await tournamentsCollection.aggregate([
+            { $match: { _id: tournamentObjectId } },
+            {
+                $lookup: {
+                    from: 'teams', localField: 'teams', foreignField: '_id', as: 'teamDetails'
+                }
+            }
+        ]).toArray();
+
+        if (tournament.length === 0) {
+            return res.status(404).json({ error: 'Tournoi non trouvé.' });
+        }
+        res.status(200).json(tournament[0]);
+
+    } catch (error) {
+        console.error("Erreur dans GET /tournaments/:id:", error);
+        res.status(400).json({ error: 'ID de tournoi invalide ou erreur serveur.' });
     }
 });
 
@@ -539,7 +539,6 @@ app.post('/tournaments/:id/bracket', async (req, res) => {
         const teams = await teamsCollection.find({ _id: { $in: tournament.teams } }).toArray();
         if (teams.length < 2) return res.status(400).json({ error: 'Pas assez d\'équipes pour commencer.' });
 
-        // Mélanger les équipes de manière aléatoire
         for (let i = teams.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [teams[i], teams[j]] = [teams[j], teams[i]];
@@ -560,7 +559,6 @@ app.post('/tournaments/:id/bracket', async (req, res) => {
         }
         bracket.rounds.push(round1);
 
-        // Générer des espaces réservés pour les tours suivants
         let numMatchesInNextRound = Math.floor(round1.length / 2);
         while (numMatchesInNextRound >= 1) {
             const nextRound = Array.from({ length: numMatchesInNextRound }, (_, i) => ({
@@ -578,7 +576,36 @@ app.post('/tournaments/:id/bracket', async (req, res) => {
     }
 });
 
-// --- Équipes (Nouveau) ---
+app.delete('/tournaments/:id', async (req, res) => {
+    const { requestingUser } = req.query;
+    if (!requestingUser || requestingUser.trim().toLowerCase() !== 'brawlarena.gg') {
+        return res.status(403).json({ error: 'Accès non autorisé.' });
+    }
+    
+    try {
+        const tournamentObjectId = new ObjectId(req.params.id);
+
+        const tournament = await tournamentsCollection.findOne({ _id: tournamentObjectId });
+        if (!tournament) {
+            return res.status(404).json({ error: 'Tournoi non trouvé.' });
+        }
+
+        if (tournament.teams && tournament.teams.length > 0) {
+            await teamsCollection.deleteMany({ _id: { $in: tournament.teams } });
+        }
+
+        const result = await tournamentsCollection.deleteOne({ _id: tournamentObjectId });
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ error: 'Tournoi non trouvé lors de la tentative de suppression.' });
+        }
+
+        res.status(200).json({ message: 'Tournoi et toutes les équipes associées supprimés avec succès.' });
+    } catch (error) {
+        console.error("Erreur dans DELETE /tournaments/:id:", error);
+        res.status(400).json({ error: 'ID de tournoi invalide ou erreur serveur.' });
+    }
+});
+
 app.post('/teams', async (req, res) => {
     const { tournamentId, teamName, creator, isPrivate, joinCode } = req.body;
     if (!tournamentId || !teamName || !creator) {
@@ -602,12 +629,8 @@ app.post('/teams', async (req, res) => {
         }
 
         const newTeam = {
-            tournamentId: tournamentObjectId,
-            name: teamName,
-            creator,
-            members: [creator],
-            isPrivate: !!isPrivate,
-            joinCode: (isPrivate) ? joinCode : null
+            tournamentId: tournamentObjectId, name: teamName, creator, members: [creator],
+            isPrivate: !!isPrivate, joinCode: (isPrivate) ? joinCode : null
         };
 
         const result = await teamsCollection.insertOne(newTeam);
@@ -643,4 +666,13 @@ app.post('/teams/:id/join', async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: 'Erreur serveur.' });
     }
+});
+
+// =================================================================
+//      SERVEUR DE FICHIERS STATIQUES (DOIT ÊTRE APRÈS LES ROUTES API)
+// =================================================================
+app.use(express.static(__dirname));
+
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
 });

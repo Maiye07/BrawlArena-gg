@@ -30,10 +30,26 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             detailContainer.innerHTML = '<p>Chargement des détails du tournoi...</p>';
             const response = await fetch(`${API_URL}/tournaments/${tournamentId}`);
+
+            // --- DÉBUT DE LA CORRECTION ---
             if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.error || 'Tournoi non trouvé.');
+                let errorMessage = `Erreur HTTP ${response.status}: ${response.statusText}`;
+                
+                // Vérifie si la réponse est du JSON avant de la parser
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const errData = await response.json();
+                    errorMessage = errData.error || 'Tournoi non trouvé.';
+                } else {
+                    // Si ce n'est pas du JSON, on lit la réponse en tant que texte
+                    const textError = await response.text();
+                    console.error("Réponse non-JSON du serveur:", textError); // Log pour le débogage
+                    errorMessage = 'Le serveur a renvoyé une réponse inattendue. L\'ID du tournoi est peut-être incorrect.';
+                }
+                throw new Error(errorMessage);
             }
+            // --- FIN DE LA CORRECTION ---
+
             const t = await response.json(); // 't' pour tournament
 
             const userTeam = t.teamDetails.find(team => team.members.includes(loggedInUsername));
