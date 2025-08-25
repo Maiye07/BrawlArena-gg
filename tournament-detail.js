@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const API_URL = 'https://brawlarena-gg.onrender.com';
     const detailContainer = document.getElementById('tournament-detail-container');
+    let currentTournamentData = null; // Stocker les données du tournoi
 
     // --- SÉLECTION DES ÉLÉMENTS MODALS ---
     const createTeamModal = document.getElementById('create-team-modal');
@@ -16,7 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const isPrivateCheckbox = document.getElementById('team-is-private');
     const joinCodeContainer = document.getElementById('team-join-code-container');
 
-    // 1. Récupérer l'ID du tournoi depuis l'URL
     const urlParams = new URLSearchParams(window.location.search);
     const tournamentId = urlParams.get('id');
 
@@ -25,112 +25,149 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // 2. Fonction pour fetcher et rendre les détails
+    // --- FONCTIONS DE RENDU POUR CHAQUE SECTION ---
+
+    function renderDetailsSection(t) {
+        const contentDiv = document.getElementById('tournament-detail-content');
+        if (!contentDiv) return;
+
+        const userTeam = t.teamDetails.find(team => team.members.includes(loggedInUsername));
+        const isTournamentFull = t.teamDetails.length >= t.maxParticipants;
+        const isTournamentStarted = t.status === 'Ongoing' || t.status === 'Finished';
+        const canBeStarted = new Date(t.dateTime) < new Date() && !t.bracket;
+
+        // --- Section Admin pour l'organisateur ---
+        let adminZoneHTML = '';
+        if (t.creator === loggedInUsername && canBeStarted) {
+            adminZoneHTML = `
+                <div class="detail-card admin-zone">
+                    <h3>Zone Admin</h3>
+                    <p>En tant qu'organisateur, vous pouvez lancer le tournoi. Cette action est irréversible.</p>
+                    <button class="button start-tournament-btn" data-tournament-id="${t._id}">Lancer le Tournoi</button>
+                </div>
+            `;
+        }
+
+        // --- Actions pour les joueurs ---
+        let playerActionsHTML = '';
+        if (!isTournamentStarted) {
+            if (!userTeam && !isTournamentFull) {
+                playerActionsHTML = `<button class="button create-team-btn" data-tournament-id="${t._id}">Créer une Équipe</button>`;
+            } else if (userTeam) {
+                playerActionsHTML = `<p style="color:var(--success-color); margin: 0;">Vous êtes dans l'équipe : ${userTeam.name}</p>`;
+            } else if (isTournamentFull) {
+                playerActionsHTML = `<p style="color:var(--text-dark); margin: 0;">Tournoi complet</p>`;
+            }
+        }
+
+        contentDiv.innerHTML = `
+            <div class="tournament-grid">
+                <div class="detail-card">
+                    <h3>Informations</h3>
+                    <p><strong>Organisateur :</strong> ${t.creator}</p>
+                    <p><strong>Date :</strong> ${new Date(t.dateTime).toLocaleString('fr-FR')}</p>
+                    <p><strong>Format :</strong> ${t.format}</p>
+                    <p><strong>Récompense :</strong> ${t.prize || 'Aucune'}</p>
+                </div>
+                <div class="detail-card">
+                    <h3>Statut</h3>
+                    <p><strong>État :</strong> ${t.status}</p>
+                    <p><strong>Équipes inscrites :</strong> ${t.teamDetails.length} / ${t.maxParticipants}</p>
+                </div>
+                <div class="detail-card">
+                    <h3>Actions</h3>
+                    <div class="scrim-actions">
+                        ${playerActionsHTML || '<p style="margin:0; color:var(--text-dark);">Les inscriptions sont fermées.</p>'}
+                    </div>
+                </div>
+                ${adminZoneHTML}
+            </div>
+        `;
+    }
+
+    function renderTeamsSection(t) {
+        const contentDiv = document.getElementById('tournament-detail-content');
+        if (!contentDiv) return;
+
+        const userTeam = t.teamDetails.find(team => team.members.includes(loggedInUsername));
+        const isTournamentStarted = t.status === 'Ongoing' || t.status === 'Finished';
+        
+        let teamsHTML = '<div class="teams-list-container">';
+        if (t.teamDetails.length > 0) {
+            teamsHTML += t.teamDetails.map(team => {
+                let joinButtonHTML = '';
+                if (!userTeam && !isTournamentStarted && team.members.length < 3) {
+                     if (team.isPrivate) {
+                        joinButtonHTML = `<button class="button join-private-team-btn" data-team-id="${team._id}">Code</button>`;
+                    } else {
+                        joinButtonHTML = `<button class="button join-team-btn" data-team-id="${team._id}">Rejoindre</button>`;
+                    }
+                }
+                return `<div class="team-entry">
+                    <span><strong>${team.name}</strong> (${team.members.length}/3) - ${team.isPrivate ? '<em>Privée</em>' : '<em>Publique</em>'}</span>
+                    ${joinButtonHTML}
+                </div>`;
+            }).join('');
+        } else {
+            teamsHTML += '<p>Aucune équipe inscrite pour le moment.</p>';
+        }
+        teamsHTML += '</div>';
+        contentDiv.innerHTML = teamsHTML;
+    }
+
+    function renderBracketSection(t) {
+        const contentDiv = document.getElementById('tournament-detail-content');
+        if (!contentDiv) return;
+
+        let bracketHTML = '';
+        if ((t.status === 'Ongoing' || t.status === 'Finished') && t.bracket) {
+            bracketHTML += '<div id="bracket-container" class="bracket-container">';
+            t.bracket.rounds.forEach((round, index) => {
+                bracketHTML += `<div class="bracket-round"><h4>Round ${index + 1}</h4>`;
+                round.forEach(match => {
+                    const team1 = match.teams[0];
+                    const team2 = match.teams[1];
+                    const winnerId = match.winner;
+                    const team1Name = team1 ? team1.name : 'En attente';
+                    const team2Name = team2 ? team2.name : 'En attente';
+                    const team1Class = `bracket-team ${winnerId === (team1 && team1.id) ? 'winner' : ''} ${team1Name === 'BYE' ? 'bye' : ''}`;
+                    const team2Class = `bracket-team ${winnerId === (team2 && team2.id) ? 'winner' : ''} ${team2Name === 'En attente' ? 'bye': ''}`;
+                    bracketHTML += `<div class="bracket-match"><div class="${team1Class}">${team1Name}</div><div class="vs-text">VS</div><div class="${team2Class}">${team2Name}</div></div>`;
+                });
+                bracketHTML += `</div>`;
+            });
+            bracketHTML += '</div>';
+        } else {
+            bracketHTML = "<p>L'arbre du tournoi n'est pas encore disponible. Il sera généré une fois le tournoi lancé par l'organisateur.</p>";
+        }
+        contentDiv.innerHTML = bracketHTML;
+    }
+
     async function fetchAndRenderTournamentDetails() {
         try {
             detailContainer.innerHTML = '<p>Chargement des détails du tournoi...</p>';
             const response = await fetch(`${API_URL}/tournaments/${tournamentId}`);
 
-            // --- DÉBUT DE LA CORRECTION ---
             if (!response.ok) {
-                let errorMessage = `Erreur HTTP ${response.status}: ${response.statusText}`;
-                
-                // Vérifie si la réponse est du JSON avant de la parser
-                const contentType = response.headers.get("content-type");
-                if (contentType && contentType.indexOf("application/json") !== -1) {
-                    const errData = await response.json();
-                    errorMessage = errData.error || 'Tournoi non trouvé.';
-                } else {
-                    // Si ce n'est pas du JSON, on lit la réponse en tant que texte
-                    const textError = await response.text();
-                    console.error("Réponse non-JSON du serveur:", textError); // Log pour le débogage
-                    errorMessage = 'Le serveur a renvoyé une réponse inattendue. L\'ID du tournoi est peut-être incorrect.';
-                }
-                throw new Error(errorMessage);
+                const errData = await response.json();
+                throw new Error(errData.error || 'Tournoi non trouvé.');
             }
-            // --- FIN DE LA CORRECTION ---
+            
+            currentTournamentData = await response.json();
 
-            const t = await response.json(); // 't' pour tournament
-
-            const userTeam = t.teamDetails.find(team => team.members.includes(loggedInUsername));
-            const isTournamentFull = t.teamDetails.length >= t.maxParticipants;
-            const isTournamentStarted = t.status === 'Ongoing' || t.status === 'Finished';
-
-            // Rendu de la liste des équipes
-            let teamsHTML = '<h4>Équipes Inscrites</h4><div class="teams-list-container">';
-            if (t.teamDetails.length > 0) {
-                teamsHTML += t.teamDetails.map(team => {
-                    let joinButtonHTML = '';
-                    if (!userTeam && !isTournamentStarted && team.members.length < 3) {
-                         if (team.isPrivate) {
-                            joinButtonHTML = `<button class="button join-private-team-btn" data-team-id="${team._id}">Code</button>`;
-                        } else {
-                            joinButtonHTML = `<button class="button join-team-btn" data-team-id="${team._id}">Rejoindre</button>`;
-                        }
-                    }
-                    return `<div class="team-entry">
-                        <span><strong>${team.name}</strong> (${team.members.length}/3) - ${team.isPrivate ? '<em>Privée</em>' : '<em>Publique</em>'}</span>
-                        ${joinButtonHTML}
-                    </div>`;
-                }).join('');
-            } else {
-                teamsHTML += '<p>Aucune équipe inscrite.</p>';
-            }
-            teamsHTML += '</div>';
-
-            // Rendu des actions principales
-            let actionsHTML = '<div class="scrim-actions">';
-            if (isTournamentStarted && t.bracket) {
-                // L'arbre est déjà affiché plus bas, pas besoin de bouton supplémentaire ici.
-            } else if (new Date(t.dateTime) < new Date() && t.creator === loggedInUsername && !t.bracket) {
-                actionsHTML += `<button class="button start-tournament-btn" data-tournament-id="${t._id}">Lancer le Tournoi</button>`;
-            } else if (!isTournamentStarted) {
-                if (!userTeam && !isTournamentFull) {
-                    actionsHTML += `<button class="button create-team-btn" data-tournament-id="${t._id}">Créer une Équipe</button>`;
-                } else if (userTeam) {
-                    actionsHTML += `<p style="color:var(--success-color);">Vous êtes dans l'équipe : ${userTeam.name}</p>`;
-                } else if (isTournamentFull) {
-                    actionsHTML += `<p style="color:var(--text-dark);">Tournoi complet</p>`;
-                }
-            }
-             actionsHTML += '</div>';
-
-            // Rendu de l'arbre si le tournoi a commencé
-            let bracketHTML = '';
-            if (isTournamentStarted && t.bracket) {
-                bracketHTML += '<h3>Arbre du tournoi</h3><div id="bracket-container" class="bracket-container">';
-                t.bracket.rounds.forEach((round, index) => {
-                    bracketHTML += `<div class="bracket-round"><h4>Round ${index + 1}</h4>`;
-                    round.forEach(match => {
-                        const team1 = match.teams[0];
-                        const team2 = match.teams[1];
-                        const winnerId = match.winner;
-                        const team1Name = team1 ? team1.name : 'En attente';
-                        const team2Name = team2 ? team2.name : 'En attente';
-                        const team1Class = `bracket-team ${winnerId === (team1 && team1.id) ? 'winner' : ''} ${team1Name === 'BYE' ? 'bye' : ''}`;
-                        const team2Class = `bracket-team ${winnerId === (team2 && team2.id) ? 'winner' : ''} ${team2Name === 'En attente' ? 'bye': ''}`;
-                        bracketHTML += `<div class="bracket-match"><div class="${team1Class}">${team1Name}</div><div class="vs-text">VS</div><div class="${team2Class}">${team2Name}</div></div>`;
-                    });
-                    bracketHTML += `</div>`;
-                });
-                bracketHTML += '</div>';
-            }
-
-            // 3. Injecter le HTML final dans le conteneur
             detailContainer.innerHTML = `
-                <h1>${t.name}</h1>
-                <p><strong>Organisateur :</strong> ${t.creator}</p>
-                <p><strong>Date :</strong> ${new Date(t.dateTime).toLocaleString('fr-FR')}</p>
-                <p><strong>Format :</strong> ${t.format}</p>
-                <p><strong>Statut :</strong> ${t.status}</p>
-                <p><strong>Équipes :</strong> ${t.teamDetails.length} / ${t.maxParticipants}</p>
-                <p><strong>Récompense :</strong> ${t.prize || 'Aucune'}</p>
-                <hr>
-                ${actionsHTML}
-                <hr>
-                ${teamsHTML}
-                ${bracketHTML}
+                <div class="tournament-header">
+                    <h1>${currentTournamentData.name}</h1>
+                </div>
+                <div class="tournament-detail-nav">
+                    <button class="nav-button active" data-section="details">Détails</button>
+                    <button class="nav-button" data-section="teams">Équipes</button>
+                    <button class="nav-button" data-section="bracket">Bracket</button>
+                </div>
+                <div id="tournament-detail-content"></div>
             `;
+            
+            renderDetailsSection(currentTournamentData);
 
         } catch (error) {
             detailContainer.innerHTML = `<p class="error">Erreur: ${error.message}</p>`;
@@ -138,12 +175,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- GESTION DES ÉVÉNEMENTS ---
-
     detailContainer.addEventListener('click', async (e) => {
         const target = e.target;
         
+        if (target.matches('.nav-button')) {
+            const section = target.dataset.section;
+            detailContainer.querySelector('.nav-button.active').classList.remove('active');
+            target.classList.add('active');
+
+            if (section === 'details') renderDetailsSection(currentTournamentData);
+            else if (section === 'teams') renderTeamsSection(currentTournamentData);
+            else if (section === 'bracket') renderBracketSection(currentTournamentData);
+            return;
+        }
+        
         if (target.matches('.create-team-btn')) {
-            document.getElementById('team-tournament-id').value = target.dataset.tournamentId;
+            document.getElementById('team-tournament-id').value = currentTournamentData._id;
             createTeamModal.style.display = 'flex';
         }
         
@@ -223,8 +270,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) { alert(`Erreur: ${err.message}`); }
     });
     
-    // --- GESTION DES MODALES ---
-
     isPrivateCheckbox.addEventListener('change', () => {
         joinCodeContainer.style.display = isPrivateCheckbox.checked ? 'block' : 'none';
     });
@@ -241,6 +286,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Lancer le fetch initial
     fetchAndRenderTournamentDetails();
 });

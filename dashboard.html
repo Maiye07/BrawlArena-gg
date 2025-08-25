@@ -231,6 +231,37 @@
         </div>
     </div>
 
+    <div id="admin-ban-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="modal-close-button">&times;</span>
+            <h2>Bannir <span id="ban-modal-username"></span></h2>
+            
+            <input type="hidden" id="banning-username-hidden">
+    
+            <div class="ban-options" style="text-align: left; margin-top: 15px;">
+                <label style="margin-bottom: 10px; display: block;">Type de bannissement :</label>
+                <div>
+                    <input type="radio" id="ban-type-temp" name="ban-type" value="temporary" checked style="margin-right: 5px;">
+                    <label for="ban-type-temp">Temporaire</label>
+                </div>
+                <div style="margin-top: 5px;">
+                    <input type="radio" id="ban-type-perm" name="ban-type" value="permanent" style="margin-right: 5px;">
+                    <label for="ban-type-perm">Permanent</label>
+                </div>
+            </div>
+    
+            <div id="ban-duration-container" style="margin-top: 20px; text-align: left;">
+                <label for="ban-duration-days">Durée (en jours) :</label>
+                <input type="number" id="ban-duration-days" min="1" value="7" style="width: 100%; margin-top: 5px;">
+            </div>
+    
+            <div class="modal-actions" style="margin-top: 30px;">
+                <button id="admin-confirm-ban-button" class="button ban-perm-btn">Confirmer le bannissement</button>
+            </div>
+            <p id="ban-modal-message" style="text-align: center; margin-top: 15px;"></p>
+        </div>
+    </div>
+
     <script src="dashboard.js"></script>
 </body>
 </html>

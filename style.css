@@ -363,7 +363,7 @@ a:hover {
     position: relative;
 }
 
-.admin-delete-scrim {
+.admin-delete-scrim, .admin-delete-tournament {
     position: absolute;
     top: 15px;
     right: 15px;
@@ -372,7 +372,7 @@ a:hover {
     transition: transform 0.2s ease;
 }
 
-.admin-delete-scrim:hover {
+.admin-delete-scrim:hover, .admin-delete-tournament:hover {
     transform: scale(1.2);
 }
 
@@ -1149,4 +1149,73 @@ a:hover {
     /* Une ombre sur le texte rend le cadenas lisible sur toutes les couleurs de fond */
     text-shadow: 0 0 3px black;
     z-index: 1;
+}
+.tournament-header {
+    text-align: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tournament-header h1 {
+    margin: 0;
+    font-size: 2.5em;
+}
+
+.tournament-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.detail-card {
+    background-color: var(--bg-dark);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.detail-card h3 {
+    margin-top: 0;
+    color: var(--primary-blue);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.detail-card p {
+    margin: 10px 0;
+    line-height: 1.6;
+}
+
+.scrim-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+/* Zone Admin Spécifique */
+.admin-zone {
+    border-color: var(--accent-violet);
+    grid-column: 1 / -1; /* Prend toute la largeur */
+    text-align: center;
+}
+
+.admin-zone h3 {
+    color: var(--accent-violet);
+}
+
+.admin-zone .button {
+    background-color: var(--accent-violet);
+    margin-top: 15px;
+}
+.admin-zone .button:hover {
+    background-color: #9d4edd; /* Violet plus clair */
+}
+
+/* Amélioration de la liste des équipes */
+.teams-list-container {
+    border-top: none;
+    padding-top: 0;
 }

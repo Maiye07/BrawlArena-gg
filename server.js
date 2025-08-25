@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+// MODIFICATION : ObjectId n'est plus requis pour les tournois, mais on le garde pour les autres collections.
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const path = require('path');
@@ -75,6 +76,19 @@ async function run() {
 }
 run();
 
+// MODIFICATION : Ajout de la fonction pour obtenir le prochain ID de la séquence
+async function getNextSequenceValue(sequenceName) {
+   const sequenceDocument = await client.db("brawlarenaDB").collection("counters").findOneAndUpdate(
+      { _id: sequenceName },
+      { $inc: { sequence_value: 1 } },
+      { returnDocument: "after" }
+   );
+   if (!sequenceDocument) {
+       throw new Error("Le compteur n'existe pas ou n'a pas pu être mis à jour.");
+   }
+   return sequenceDocument.sequence_value;
+}
+
 // ===============================================
 //      MIDDLEWARE DE SÉCURITÉ (AMÉLIORÉ)
 // ===============================================
@@ -92,6 +106,7 @@ const isAdmin = (req, res, next) => {
 // =================================================================
 
 // --- Utilisateurs ---
+// ... (Aucun changement dans les routes /register, /login, /premium/toggle, /users/statuses, /users/customize, /create-checkout-session)
 app.post('/register', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis.' });
@@ -319,6 +334,7 @@ app.post('/create-checkout-session', async (req, res) => {
 });
 
 // --- Administration ---
+// ... (Aucun changement dans les routes d'administration)
 app.get('/admin/users', isAdmin, async (req, res) => {
     try {
         const users = await usersCollection.find({}, {
@@ -385,7 +401,9 @@ app.post('/admin/user/customizations', isAdmin, async (req, res) => {
     }
 });
 
+
 // --- Scrims ---
+// ... (Aucun changement dans les routes de scrims)
 app.post('/scrims', async (req, res) => {
     const { creator, roomName, gameId, avgRank, startsInMinutes } = req.body;
     if (!creator || !roomName || !avgRank || startsInMinutes === undefined) { return res.status(400).json({ error: "Informations manquantes pour la création du scrim." }); }
@@ -459,7 +477,9 @@ app.patch('/scrims/:id/gameid', async (req, res) => {
     } catch (error) { res.status(400).json({ error: 'ID de scrim invalide' }); }
 });
 
+
 // --- Tournois & Équipes ---
+// MODIFICATION : Route de création de tournoi mise à jour
 app.post('/tournaments', async (req, res) => {
     const { creator, name, description, dateTime, format, maxParticipants, prize } = req.body;
     if (!creator || !name || !dateTime || !format || !maxParticipants) {
@@ -476,19 +496,28 @@ app.post('/tournaments', async (req, res) => {
     if (dailyTournaments >= 1) {
         return res.status(403).json({ error: "Vous avez déjà créé votre tournoi pour aujourd'hui." });
     }
+    
+    try {
+        const nextId = await getNextSequenceValue('tournamentId');
 
-    const newTournament = {
-        creator, name, description, dateTime: new Date(dateTime), format, maxParticipants, prize,
-        teams: [], status: 'Upcoming', bracket: null, createdAt: new Date()
-    };
+        const newTournament = {
+            _id: nextId, // Utilisation de l'ID numérique
+            creator, name, description, dateTime: new Date(dateTime), format, maxParticipants, prize,
+            teams: [], status: 'Upcoming', bracket: null, createdAt: new Date()
+        };
 
-    const result = await tournamentsCollection.insertOne(newTournament);
-    await usersCollection.updateOne(
-        { _id: user._id },
-        { $set: { lastTournamentDate: today }, $inc: { dailyTournaments: 1 } }
-    );
+        await tournamentsCollection.insertOne(newTournament);
+        await usersCollection.updateOne(
+            { _id: new ObjectId(user._id) }, // L'ID de l'utilisateur est toujours un ObjectId
+            { $set: { lastTournamentDate: today }, $inc: { dailyTournaments: 1 } }
+        );
 
-    res.status(201).json({ message: 'Tournoi créé avec succès !', tournament: { ...newTournament, _id: result.insertedId } });
+        res.status(201).json({ message: 'Tournoi créé avec succès !', tournament: newTournament });
+
+    } catch(error) {
+        console.error("Erreur lors de la création du tournoi :", error);
+        res.status(500).json({ error: "Erreur serveur lors de la création du tournoi." });
+    }
 });
 
 app.get('/tournaments', async (req, res) => {
@@ -507,11 +536,16 @@ app.get('/tournaments', async (req, res) => {
     }
 });
 
+// MODIFICATION : Route de récupération de tournoi mise à jour
 app.get('/tournaments/:id', async (req, res) => {
     try {
-        const tournamentObjectId = new ObjectId(req.params.id);
+        const tournamentId = parseInt(req.params.id, 10);
+        if (isNaN(tournamentId)) {
+            return res.status(400).json({ error: 'ID de tournoi invalide.' });
+        }
+
         const tournament = await tournamentsCollection.aggregate([
-            { $match: { _id: tournamentObjectId } },
+            { $match: { _id: tournamentId } },
             {
                 $lookup: {
                     from: 'teams', localField: 'teams', foreignField: '_id', as: 'teamDetails'
@@ -526,14 +560,19 @@ app.get('/tournaments/:id', async (req, res) => {
 
     } catch (error) {
         console.error("Erreur dans GET /tournaments/:id:", error);
-        res.status(400).json({ error: 'ID de tournoi invalide ou erreur serveur.' });
+        res.status(500).json({ error: 'Erreur serveur.' });
     }
 });
 
+// MODIFICATION : Route de génération de l'arbre mise à jour
 app.post('/tournaments/:id/bracket', async (req, res) => {
     try {
-        const tournamentObjectId = new ObjectId(req.params.id);
-        const tournament = await tournamentsCollection.findOne({ _id: tournamentObjectId });
+        const tournamentId = parseInt(req.params.id, 10);
+        if (isNaN(tournamentId)) {
+            return res.status(400).json({ error: 'ID de tournoi invalide.' });
+        }
+        
+        const tournament = await tournamentsCollection.findOne({ _id: tournamentId });
         if (!tournament) return res.status(404).json({ error: 'Tournoi non trouvé.' });
 
         const teams = await teamsCollection.find({ _id: { $in: tournament.teams } }).toArray();
@@ -569,13 +608,15 @@ app.post('/tournaments/:id/bracket', async (req, res) => {
             numMatchesInNextRound = Math.floor(numMatchesInNextRound / 2);
         }
 
-        await tournamentsCollection.updateOne({ _id: tournamentObjectId }, { $set: { status: 'Ongoing', bracket: bracket } });
+        await tournamentsCollection.updateOne({ _id: tournamentId }, { $set: { status: 'Ongoing', bracket: bracket } });
         res.status(200).json({ message: 'Arbre généré avec succès.', bracket });
     } catch (error) {
+        console.error("Erreur lors de la génération de l'arbre:", error);
         res.status(500).json({ error: 'Erreur serveur lors de la génération de l\'arbre.' });
     }
 });
 
+// MODIFICATION : Route de suppression de tournoi mise à jour
 app.delete('/tournaments/:id', async (req, res) => {
     const { requestingUser } = req.query;
     if (!requestingUser || requestingUser.trim().toLowerCase() !== 'brawlarena.gg') {
@@ -583,18 +624,22 @@ app.delete('/tournaments/:id', async (req, res) => {
     }
     
     try {
-        const tournamentObjectId = new ObjectId(req.params.id);
+        const tournamentId = parseInt(req.params.id, 10);
+        if (isNaN(tournamentId)) {
+            return res.status(400).json({ error: 'ID de tournoi invalide.' });
+        }
 
-        const tournament = await tournamentsCollection.findOne({ _id: tournamentObjectId });
+        const tournament = await tournamentsCollection.findOne({ _id: tournamentId });
         if (!tournament) {
             return res.status(404).json({ error: 'Tournoi non trouvé.' });
         }
 
         if (tournament.teams && tournament.teams.length > 0) {
+            // Les IDs dans tournament.teams sont des ObjectId, donc la requête est correcte
             await teamsCollection.deleteMany({ _id: { $in: tournament.teams } });
         }
 
-        const result = await tournamentsCollection.deleteOne({ _id: tournamentObjectId });
+        const result = await tournamentsCollection.deleteOne({ _id: tournamentId });
         if (result.deletedCount === 0) {
             return res.status(404).json({ error: 'Tournoi non trouvé lors de la tentative de suppression.' });
         }
@@ -602,7 +647,7 @@ app.delete('/tournaments/:id', async (req, res) => {
         res.status(200).json({ message: 'Tournoi et toutes les équipes associées supprimés avec succès.' });
     } catch (error) {
         console.error("Erreur dans DELETE /tournaments/:id:", error);
-        res.status(400).json({ error: 'ID de tournoi invalide ou erreur serveur.' });
+        res.status(500).json({ error: 'Erreur serveur.' });
     }
 });
 
@@ -616,28 +661,36 @@ app.post('/teams', async (req, res) => {
     }
 
     try {
-        const tournamentObjectId = new ObjectId(tournamentId);
-        const tournament = await tournamentsCollection.findOne({ _id: tournamentObjectId });
+        // L'ID du tournoi reçu du frontend sera un nombre
+        const numericTournamentId = parseInt(tournamentId, 10);
+        if (isNaN(numericTournamentId)) {
+             return res.status(400).json({ error: 'ID de tournoi invalide fourni.' });
+        }
+
+        const tournament = await tournamentsCollection.findOne({ _id: numericTournamentId });
         if (!tournament) return res.status(404).json({ error: 'Tournoi non trouvé.' });
         if (tournament.teams.length >= tournament.maxParticipants) {
              return res.status(403).json({ error: 'Ce tournoi est complet.' });
         }
 
-        const userInAnotherTeam = await teamsCollection.findOne({ tournamentId: tournamentObjectId, members: creator });
+        const userInAnotherTeam = await teamsCollection.findOne({ tournamentId: numericTournamentId, members: creator });
         if (userInAnotherTeam) {
             return res.status(409).json({ error: 'Vous êtes déjà dans une équipe pour ce tournoi.' });
         }
 
         const newTeam = {
-            tournamentId: tournamentObjectId, name: teamName, creator, members: [creator],
+            tournamentId: numericTournamentId, // On stocke l'ID numérique
+            name: teamName, creator, members: [creator],
             isPrivate: !!isPrivate, joinCode: (isPrivate) ? joinCode : null
         };
 
         const result = await teamsCollection.insertOne(newTeam);
-        await tournamentsCollection.updateOne({ _id: tournamentObjectId }, { $push: { teams: result.insertedId } });
+        // On ajoute l'ObjectId de la nouvelle équipe (généré par défaut) au tournoi
+        await tournamentsCollection.updateOne({ _id: numericTournamentId }, { $push: { teams: result.insertedId } });
 
         res.status(201).json(newTeam);
     } catch (error) {
+        console.error("Erreur à la création de l'équipe :", error);
         res.status(500).json({ error: 'Erreur serveur lors de la création de l\'équipe.' });
     }
 });
@@ -647,7 +700,7 @@ app.post('/teams/:id/join', async (req, res) => {
     if (!username) return res.status(400).json({ error: 'Nom d\'utilisateur manquant.' });
 
     try {
-        const teamObjectId = new ObjectId(req.params.id);
+        const teamObjectId = new ObjectId(req.params.id); // L'ID d'une équipe reste un ObjectId
         const team = await teamsCollection.findOne({ _id: teamObjectId });
 
         if (!team) return res.status(404).json({ error: 'Équipe non trouvée.' });
