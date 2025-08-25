@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-// MODIFICATION : ObjectId n'est plus requis pour les tournois, mais on le garde pour les autres collections.
+// MODIFICATION : ObjectId est requis pour la rétrocompatibilité et pour les autres collections.
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const path = require('path');
@@ -106,7 +106,6 @@ const isAdmin = (req, res, next) => {
 // =================================================================
 
 // --- Utilisateurs ---
-// ... (Aucun changement dans les routes /register, /login, /premium/toggle, /users/statuses, /users/customize, /create-checkout-session)
 app.post('/register', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis.' });
@@ -334,7 +333,6 @@ app.post('/create-checkout-session', async (req, res) => {
 });
 
 // --- Administration ---
-// ... (Aucun changement dans les routes d'administration)
 app.get('/admin/users', isAdmin, async (req, res) => {
     try {
         const users = await usersCollection.find({}, {
@@ -403,7 +401,6 @@ app.post('/admin/user/customizations', isAdmin, async (req, res) => {
 
 
 // --- Scrims ---
-// ... (Aucun changement dans les routes de scrims)
 app.post('/scrims', async (req, res) => {
     const { creator, roomName, gameId, avgRank, startsInMinutes } = req.body;
     if (!creator || !roomName || !avgRank || startsInMinutes === undefined) { return res.status(400).json({ error: "Informations manquantes pour la création du scrim." }); }
@@ -536,16 +533,30 @@ app.get('/tournaments', async (req, res) => {
     }
 });
 
-// MODIFICATION : Route de récupération de tournoi mise à jour
+// MODIFICATION : Route de récupération de tournoi mise à jour pour être plus robuste
 app.get('/tournaments/:id', async (req, res) => {
     try {
-        const tournamentId = parseInt(req.params.id, 10);
-        if (isNaN(tournamentId)) {
-            return res.status(400).json({ error: 'ID de tournoi invalide.' });
+        const idParam = req.params.id;
+        let query;
+
+        // On essaie de convertir l'ID en nombre.
+        const numericId = parseInt(idParam, 10);
+
+        // Si c'est un nombre valide, on l'utilise pour la recherche.
+        // Sinon, on suppose que c'est un ObjectId.
+        if (!isNaN(numericId) && String(numericId) === idParam) {
+            query = { _id: numericId };
+        } else {
+            // Pour être sûr que c'est un format ObjectId valide avant de faire la requête
+            if (ObjectId.isValid(idParam)) {
+                query = { _id: new ObjectId(idParam) };
+            } else {
+                 return res.status(400).json({ error: 'Format d\'ID de tournoi invalide.' });
+            }
         }
 
         const tournament = await tournamentsCollection.aggregate([
-            { $match: { _id: tournamentId } },
+            { $match: query }, // On utilise notre requête dynamique
             {
                 $lookup: {
                     from: 'teams', localField: 'teams', foreignField: '_id', as: 'teamDetails'
