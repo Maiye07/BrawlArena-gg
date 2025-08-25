@@ -505,7 +505,7 @@ app.post('/tournaments', async (req, res) => {
 
         await tournamentsCollection.insertOne(newTournament);
         await usersCollection.updateOne(
-            { _id: new ObjectId(user._id) }, // L'ID de l'utilisateur est toujours un ObjectId
+            { _id: user._id }, // Correction : On utilise directement user._id
             { $set: { lastTournamentDate: today }, $inc: { dailyTournaments: 1 } }
         );
 
@@ -672,32 +672,42 @@ app.post('/teams', async (req, res) => {
     }
 
     try {
-        // L'ID du tournoi reçu du frontend sera un nombre
+        // --- DÉBUT DE LA CORRECTION ---
+        // Ajout d'une logique robuste pour gérer les ID numériques et les ObjectId
+        let query;
         const numericTournamentId = parseInt(tournamentId, 10);
-        if (isNaN(numericTournamentId)) {
-             return res.status(400).json({ error: 'ID de tournoi invalide fourni.' });
-        }
 
-        const tournament = await tournamentsCollection.findOne({ _id: numericTournamentId });
+        if (!isNaN(numericTournamentId) && String(numericTournamentId) === tournamentId) {
+            query = { _id: numericTournamentId };
+        } else {
+            if (ObjectId.isValid(tournamentId)) {
+                query = { _id: new ObjectId(tournamentId) };
+            } else {
+                return res.status(400).json({ error: 'Format d\'ID de tournoi invalide.' });
+            }
+        }
+        
+        const tournament = await tournamentsCollection.findOne(query);
+        // --- FIN DE LA CORRECTION ---
+
         if (!tournament) return res.status(404).json({ error: 'Tournoi non trouvé.' });
         if (tournament.teams.length >= tournament.maxParticipants) {
              return res.status(403).json({ error: 'Ce tournoi est complet.' });
         }
 
-        const userInAnotherTeam = await teamsCollection.findOne({ tournamentId: numericTournamentId, members: creator });
+        const userInAnotherTeam = await teamsCollection.findOne({ tournamentId: tournament._id, members: creator });
         if (userInAnotherTeam) {
             return res.status(409).json({ error: 'Vous êtes déjà dans une équipe pour ce tournoi.' });
         }
 
         const newTeam = {
-            tournamentId: numericTournamentId, // On stocke l'ID numérique
+            tournamentId: tournament._id, // Utilise l'ID correct trouvé (numérique ou ObjectId)
             name: teamName, creator, members: [creator],
             isPrivate: !!isPrivate, joinCode: (isPrivate) ? joinCode : null
         };
 
         const result = await teamsCollection.insertOne(newTeam);
-        // On ajoute l'ObjectId de la nouvelle équipe (généré par défaut) au tournoi
-        await tournamentsCollection.updateOne({ _id: numericTournamentId }, { $push: { teams: result.insertedId } });
+        await tournamentsCollection.updateOne({ _id: tournament._id }, { $push: { teams: result.insertedId } });
 
         res.status(201).json(newTeam);
     } catch (error) {
