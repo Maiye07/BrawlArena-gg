@@ -673,11 +673,11 @@ app.post('/teams', async (req, res) => {
 
     try {
         // --- DÉBUT DE LA CORRECTION ---
-        // Ajout d'une logique robuste pour gérer les ID numériques et les ObjectId
         let query;
         const numericTournamentId = parseInt(tournamentId, 10);
 
-        if (!isNaN(numericTournamentId) && String(numericTournamentId) === tournamentId) {
+        // Correction ici : On utilise '==' au lieu de '===' pour comparer un string et un nombre
+        if (!isNaN(numericTournamentId) && String(numericTournamentId) == tournamentId) {
             query = { _id: numericTournamentId };
         } else {
             if (ObjectId.isValid(tournamentId)) {
@@ -688,6 +688,7 @@ app.post('/teams', async (req, res) => {
         }
         
         const tournament = await tournamentsCollection.findOne(query);
+        // --- FIN DE LA CORRECTION ---
         // --- FIN DE LA CORRECTION ---
 
         if (!tournament) return res.status(404).json({ error: 'Tournoi non trouvé.' });
