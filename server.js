@@ -81,13 +81,13 @@ async function getNextSequenceValue(sequenceName) {
    const sequenceDocument = await client.db("brawlarenaDB").collection("counters").findOneAndUpdate(
       { _id: sequenceName },
       { $inc: { sequence_value: 1 } },
-      { returnDocument: "after" }
+      { returnDocument: "after", upsert: true } // CORRECTION APPLIQUÉE ICI
    );
-   if (!sequenceDocument) {
-       throw new Error("Le compteur n'existe pas ou n'a pas pu être mis à jour.");
-   }
+   // Avec upsert: true, sequenceDocument ne sera jamais null.
+   // La première fois, il créera le document avec sequence_value: 1.
    return sequenceDocument.sequence_value;
 }
+
 
 // ===============================================
 //      MIDDLEWARE DE SÉCURITÉ (AMÉLIORÉ)
