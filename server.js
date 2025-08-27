@@ -597,27 +597,59 @@ app.post('/tournaments/:id/bracket', async (req, res) => {
         const bracket = { rounds: [] };
         const round1 = [];
         for (let i = 0; i < teams.length; i += 2) {
-            if (teams[i + 1]) {
-                round1.push({
-                    match: i / 2 + 1,
-                    teams: [{ name: teams[i].name, id: teams[i]._id }, { name: teams[i + 1].name, id: teams[i + 1]._id }],
-                    winner: null
-                });
+            const matchIndex = i / 2;
+            const team1 = teams[i];
+            const team2 = teams[i+1];
+
+            const match = {
+                teams: [
+                    { id: team1._id, name: team1.name, score: 0 },
+                    null
+                ],
+                winner: null
+            };
+
+            if (team2) {
+                 match.teams[1] = { id: team2._id, name: team2.name, score: 0 };
             } else {
-                round1.push({ match: i / 2 + 1, teams: [{ name: teams[i].name, id: teams[i]._id }, { name: "BYE", id: null }], winner: teams[i]._id });
+                 match.teams[1] = { id: null, name: "BYE", score: 0 };
+                 match.winner = team1._id; // Auto-win for team1
             }
+            round1.push(match);
         }
         bracket.rounds.push(round1);
 
-        let numMatchesInNextRound = Math.floor(round1.length / 2);
-        while (numMatchesInNextRound >= 1) {
-            const nextRound = Array.from({ length: numMatchesInNextRound }, (_, i) => ({
-                match: i + 1, teams: [null, null], winner: null
-            }));
+        let numTeamsInNextRound = Math.ceil(round1.length);
+        
+        // Auto-advance winners of BYE matches
+        const round2Winners = round1.filter(m => m.winner !== null).map(m => m.teams.find(t => t.id === m.winner));
+
+        let currentRoundForAdvancement = bracket.rounds[0];
+
+        while(numTeamsInNextRound > 1) {
+            numTeamsInNextRound = numTeamsInNextRound / 2;
+            const nextRound = [];
+            for(let i = 0; i < numTeamsInNextRound; i++){
+                nextRound.push({ teams: [null, null], winner: null });
+            }
             bracket.rounds.push(nextRound);
-            if (numMatchesInNextRound === 1) break;
-            numMatchesInNextRound = Math.floor(numMatchesInNextRound / 2);
         }
+        
+        // Advance winners from BYE matches in Round 1
+        for(let i = 0; i < round1.length; i++){
+            if(round1[i].winner){
+                 const winnerTeam = round1[i].teams.find(t => t.id && t.id.equals(round1[i].winner));
+                 if(winnerTeam){
+                    const nextRoundIndex = 1;
+                    const nextMatchIndex = Math.floor(i / 2);
+                    const teamSlot = i % 2;
+                    if(bracket.rounds[nextRoundIndex] && bracket.rounds[nextRoundIndex][nextMatchIndex]){
+                       bracket.rounds[nextRoundIndex][nextMatchIndex].teams[teamSlot] = { id: winnerTeam.id, name: winnerTeam.name, score: 0 };
+                    }
+                 }
+            }
+        }
+
 
         await tournamentsCollection.updateOne({ _id: tournamentId }, { $set: { status: 'Ongoing', bracket: bracket } });
         res.status(200).json({ message: 'Arbre généré avec succès.', bracket });
@@ -626,6 +658,48 @@ app.post('/tournaments/:id/bracket', async (req, res) => {
         res.status(500).json({ error: 'Erreur serveur lors de la génération de l\'arbre.' });
     }
 });
+
+
+app.post('/tournaments/:id/matches/update', async (req, res) => {
+    const { roundIndex, matchIndex, scores, winnerTeamId, username } = req.body;
+
+    try {
+        const tournamentId = parseInt(req.params.id, 10);
+        if (isNaN(tournamentId)) return res.status(400).json({ error: 'ID de tournoi invalide.' });
+
+        const tournament = await tournamentsCollection.findOne({ _id: tournamentId });
+        if (!tournament) return res.status(404).json({ error: 'Tournoi non trouvé.' });
+        if (tournament.creator !== username) return res.status(403).json({ error: 'Action non autorisée.' });
+        if (!tournament.bracket) return res.status(400).json({ error: 'Le tournoi n\'a pas encore commencé.' });
+
+        // Mettre à jour le match
+        const match = tournament.bracket.rounds[roundIndex][matchIndex];
+        match.teams[0].score = scores.team1Score;
+        match.teams[1].score = scores.team2Score;
+        match.winner = new ObjectId(winnerTeamId);
+
+        // Faire avancer le gagnant
+        const nextRoundIndex = roundIndex + 1;
+        if (nextRoundIndex < tournament.bracket.rounds.length) {
+            const winnerTeam = match.teams.find(t => t.id && t.id.equals(match.winner));
+            if(winnerTeam) {
+                const nextMatchIndex = Math.floor(matchIndex / 2);
+                const teamSlot = matchIndex % 2;
+                
+                const nextMatch = tournament.bracket.rounds[nextRoundIndex][nextMatchIndex];
+                nextMatch.teams[teamSlot] = { id: winnerTeam.id, name: winnerTeam.name, score: 0 };
+            }
+        }
+
+        await tournamentsCollection.updateOne({ _id: tournamentId }, { $set: { bracket: tournament.bracket } });
+        res.status(200).json(tournament);
+
+    } catch (error) {
+        console.error("Erreur de mise à jour du match:", error);
+        res.status(500).json({ error: 'Erreur serveur.' });
+    }
+});
+
 
 // MODIFICATION : Route de suppression de tournoi mise à jour
 app.delete('/tournaments/:id', async (req, res) => {
@@ -760,7 +834,6 @@ app.get('*', (req, res) => {
  */
 app.post('/tournaments/:tournamentId/teams/:teamId/disqualify', async (req, res) => {
     const { tournamentId, teamId } = req.params;
-    // Le nom d'utilisateur de la personne qui fait la demande est envoyé dans le corps de la requête.
     const { username } = req.body;
 
     if (!username) {
@@ -768,20 +841,34 @@ app.post('/tournaments/:tournamentId/teams/:teamId/disqualify', async (req, res)
     }
 
     try {
-        const tournament = await tournamentsCollection.findOne({ _id: new ObjectId(tournamentId) });
+        // --- DÉBUT DE LA CORRECTION ---
+        let query;
+        const numericTournamentId = parseInt(tournamentId, 10);
+
+        if (!isNaN(numericTournamentId) && String(numericTournamentId) == tournamentId) {
+            query = { _id: numericTournamentId };
+        } else {
+            if (ObjectId.isValid(tournamentId)) {
+                query = { _id: new ObjectId(tournamentId) };
+            } else {
+                return res.status(400).json({ error: 'Format d\'ID de tournoi invalide.' });
+            }
+        }
+        
+        const tournament = await tournamentsCollection.findOne(query);
 
         if (!tournament) {
             return res.status(404).json({ error: 'Tournoi non trouvé.' });
         }
 
-        // Sécurité : On vérifie si l'utilisateur est bien le créateur du tournoi.
         if (tournament.creator !== username) {
             return res.status(403).json({ error: 'Seul le créateur du tournoi peut disqualifier des équipes.' });
         }
 
-        // On met à jour l'équipe pour la marquer comme disqualifiée.
+        const teamObjectId = new ObjectId(teamId);
+
         const result = await teamsCollection.updateOne(
-            { _id: new ObjectId(teamId), tournamentId: tournamentId },
+            { _id: teamObjectId },
             { $set: { disqualified: true } }
         );
 
