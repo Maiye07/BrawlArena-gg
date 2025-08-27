@@ -751,3 +751,48 @@ app.use(express.static(__dirname));
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
+// Ajoutez ce code dans votre fichier server.js, avec vos autres routes API.
+
+/**
+ * @route   POST /tournaments/:tournamentId/teams/:teamId/disqualify
+ * @desc    Disqualifie une équipe d'un tournoi.
+ * @access  Private (seul le créateur du tournoi peut le faire)
+ */
+app.post('/tournaments/:tournamentId/teams/:teamId/disqualify', async (req, res) => {
+    const { tournamentId, teamId } = req.params;
+    // Le nom d'utilisateur de la personne qui fait la demande est envoyé dans le corps de la requête.
+    const { username } = req.body;
+
+    if (!username) {
+        return res.status(400).json({ error: 'Le nom d\'utilisateur est requis.' });
+    }
+
+    try {
+        const tournament = await tournamentsCollection.findOne({ _id: new ObjectId(tournamentId) });
+
+        if (!tournament) {
+            return res.status(404).json({ error: 'Tournoi non trouvé.' });
+        }
+
+        // Sécurité : On vérifie si l'utilisateur est bien le créateur du tournoi.
+        if (tournament.creator !== username) {
+            return res.status(403).json({ error: 'Seul le créateur du tournoi peut disqualifier des équipes.' });
+        }
+
+        // On met à jour l'équipe pour la marquer comme disqualifiée.
+        const result = await teamsCollection.updateOne(
+            { _id: new ObjectId(teamId), tournamentId: tournamentId },
+            { $set: { disqualified: true } }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: 'Équipe non trouvée dans ce tournoi.' });
+        }
+
+        res.status(200).json({ message: 'Équipe disqualifiée avec succès.' });
+
+    } catch (error) {
+        console.error('Erreur lors de la disqualification de l\'équipe:', error);
+        res.status(500).json({ error: 'Erreur serveur.' });
+    }
+});
